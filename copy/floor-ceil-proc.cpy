@@ -169,9 +169,26 @@
                    MOVE 1 TO WS-FC-PAL-IDX
                END-IF
 
-      *>       Distance lighting via colormap
-               COMPUTE WS-FC-LIGHT =
-                   WS-FC-ROW-DIST * 2
+      *>       Distance + sector lighting via colormap
+               COMPUTE WS-FC-GRID-X =
+                   FUNCTION INTEGER-PART(
+                   WS-FC-FLOOR-X) + 1
+               COMPUTE WS-FC-GRID-Y =
+                   FUNCTION INTEGER-PART(
+                   WS-FC-FLOOR-Y) + 1
+               IF WS-FC-GRID-X >= 1
+                   AND WS-FC-GRID-X <= WS-MAP-SIZE
+                   AND WS-FC-GRID-Y >= 1
+                   AND WS-FC-GRID-Y <= WS-MAP-SIZE
+                   COMPUTE WS-FC-LIGHT =
+                       MC-LIGHT(WS-FC-GRID-Y,
+                       WS-FC-GRID-X)
+                       / 8
+                       + WS-FC-ROW-DIST * 2
+               ELSE
+                   COMPUTE WS-FC-LIGHT =
+                       WS-FC-ROW-DIST * 2
+               END-IF
                IF WS-FC-LIGHT > 31
                    MOVE 31 TO WS-FC-LIGHT
                END-IF
@@ -263,8 +280,25 @@
                    MOVE 1 TO WS-FC-PAL-IDX
                END-IF
 
-               COMPUTE WS-FC-LIGHT =
-                   WS-FC-ROW-DIST * 2
+               COMPUTE WS-FC-GRID-X =
+                   FUNCTION INTEGER-PART(
+                   WS-FC-FLOOR-X) + 1
+               COMPUTE WS-FC-GRID-Y =
+                   FUNCTION INTEGER-PART(
+                   WS-FC-FLOOR-Y) + 1
+               IF WS-FC-GRID-X >= 1
+                   AND WS-FC-GRID-X <= WS-MAP-SIZE
+                   AND WS-FC-GRID-Y >= 1
+                   AND WS-FC-GRID-Y <= WS-MAP-SIZE
+                   COMPUTE WS-FC-LIGHT =
+                       MC-LIGHT(WS-FC-GRID-Y,
+                       WS-FC-GRID-X)
+                       / 8
+                       + WS-FC-ROW-DIST * 2
+               ELSE
+                   COMPUTE WS-FC-LIGHT =
+                       WS-FC-ROW-DIST * 2
+               END-IF
                IF WS-FC-LIGHT > 31
                    MOVE 31 TO WS-FC-LIGHT
                END-IF

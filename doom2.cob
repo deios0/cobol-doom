@@ -104,6 +104,9 @@
       *>   Initialize weapons (load pistol sprite)
            PERFORM INIT-WEAPONS
 
+      *>   Show title screen (wait for SPACE)
+           PERFORM SHOW-TITLE-SCREEN
+
       *>   Game state = playing
            MOVE 1 TO WS-GAME-STATE
 
@@ -153,6 +156,9 @@
                PERFORM CHECK-USE-KEY
                PERFORM UPDATE-DOORS
                PERFORM CHECK-PICKUPS
+
+      *>       Check for level exit
+               PERFORM CHECK-LEVEL-EXIT
 
            END-PERFORM
 
