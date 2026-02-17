@@ -79,7 +79,7 @@
       *>   T(15), P(16), M(17), O(18), %(19)
       *> Each char = 35 bytes: 7 rows x 5 cols, "1"=pixel "0"=off
       *> Row-major order: row1(5) row2(5) ... row7(5)
-       01 WS-HUD-CHAR-COUNT        PIC 9(3) VALUE 019.
+       01 WS-HUD-CHAR-COUNT        PIC 9(3) VALUE 024.
        01 WS-HUD-FONT-DATA.
       *>   Digit 0 (index 1):
       *>     .XXX.  X...X  X...X  X...X  X...X  X...X  .XXX.
@@ -157,10 +157,30 @@
       *>     X...X  ....X  ...X.  ..X..  .X...  X....  X...X
           05 FILLER PIC X(35) VALUE
              "10001000010001000100010001000010001".
+      *>   Letter C (index 20):
+      *>     .XXX.  X...X  X....  X....  X....  X...X  .XXX.
+          05 FILLER PIC X(35) VALUE
+             "01110100011000010000100001000101110".
+      *>   Letter B (index 21):
+      *>     XXXX.  X...X  X...X  XXXX.  X...X  X...X  XXXX.
+          05 FILLER PIC X(35) VALUE
+             "11110100011000111110100011000111110".
+      *>   Letter D (index 22):
+      *>     XXXX.  X...X  X...X  X...X  X...X  X...X  XXXX.
+          05 FILLER PIC X(35) VALUE
+             "11110100011000110001100011000111110".
+      *>   Letter S (index 23):
+      *>     .XXX.  X...X  X....  .XXX.  ....X  X...X  .XXX.
+          05 FILLER PIC X(35) VALUE
+             "01110100011000001110000011000101110".
+      *>   Letter R (index 24):
+      *>     XXXX.  X...X  X...X  XXXX.  X.X..  X..X.  X...X
+          05 FILLER PIC X(35) VALUE
+             "11110100011000111110101001001010001".
 
        01 WS-HUD-FONT-R REDEFINES WS-HUD-FONT-DATA.
           05 WS-HUD-CHAR-BMP       PIC X(35)
-                                    OCCURS 19 TIMES.
+                                    OCCURS 24 TIMES.
 
       *> --- Character map for "HEALTH" (indices into font) ---
       *> H=11 E=12 A=13 L=14 T=15 H=11
@@ -243,3 +263,85 @@
        01 WS-HUD-LBL-I            PIC 9(3).
        01 WS-HUD-LBL-X            PIC 9(3).
        01 WS-HUD-TEMP             PIC 9(3).
+
+      *> --- Title screen data ---
+      *> "COBOL DOOM 2" character indices
+      *> C=20 O=18 B=21 O=18 L=14 (space) D=22 O=18 O=18 M=17
+      *> (space) 2=3
+       01 WS-TTL-TITLE-IDX.
+          05 FILLER PIC 9(2) VALUE 20.
+          05 FILLER PIC 9(2) VALUE 18.
+          05 FILLER PIC 9(2) VALUE 21.
+          05 FILLER PIC 9(2) VALUE 18.
+          05 FILLER PIC 9(2) VALUE 14.
+          05 FILLER PIC 9(2) VALUE 00.
+          05 FILLER PIC 9(2) VALUE 22.
+          05 FILLER PIC 9(2) VALUE 18.
+          05 FILLER PIC 9(2) VALUE 18.
+          05 FILLER PIC 9(2) VALUE 17.
+          05 FILLER PIC 9(2) VALUE 00.
+          05 FILLER PIC 9(2) VALUE 03.
+       01 WS-TTL-TITLE-R REDEFINES WS-TTL-TITLE-IDX.
+          05 WS-TTL-TITLE-CI        PIC 9(2)
+                                     OCCURS 12 TIMES.
+       01 WS-TTL-TITLE-LEN          PIC 9(2) VALUE 12.
+
+      *> "PRESS SPACE TO START" character indices
+      *> P=16 R=24 E=12 S=23 S=23 (space) S=23 P=16 A=13
+      *> C=20 E=12 (space) T=15 O=18 (space) S=23 T=15
+      *> A=13 R=24 T=15
+       01 WS-TTL-SUB-IDX.
+          05 FILLER PIC 9(2) VALUE 16.
+          05 FILLER PIC 9(2) VALUE 24.
+          05 FILLER PIC 9(2) VALUE 12.
+          05 FILLER PIC 9(2) VALUE 23.
+          05 FILLER PIC 9(2) VALUE 23.
+          05 FILLER PIC 9(2) VALUE 00.
+          05 FILLER PIC 9(2) VALUE 23.
+          05 FILLER PIC 9(2) VALUE 16.
+          05 FILLER PIC 9(2) VALUE 13.
+          05 FILLER PIC 9(2) VALUE 20.
+          05 FILLER PIC 9(2) VALUE 12.
+          05 FILLER PIC 9(2) VALUE 00.
+          05 FILLER PIC 9(2) VALUE 15.
+          05 FILLER PIC 9(2) VALUE 18.
+          05 FILLER PIC 9(2) VALUE 00.
+          05 FILLER PIC 9(2) VALUE 23.
+          05 FILLER PIC 9(2) VALUE 15.
+          05 FILLER PIC 9(2) VALUE 13.
+          05 FILLER PIC 9(2) VALUE 24.
+          05 FILLER PIC 9(2) VALUE 15.
+       01 WS-TTL-SUB-RD REDEFINES WS-TTL-SUB-IDX.
+          05 WS-TTL-SUB-CI           PIC 9(2)
+                                      OCCURS 20 TIMES.
+       01 WS-TTL-SUB-LEN            PIC 9(2) VALUE 20.
+
+      *> --- Scaled character drawing variables ---
+       01 WS-TTL-SCALE              PIC 9(1) VALUE 3.
+       01 WS-TTL-CHR-SX             PIC 9(3).
+       01 WS-TTL-CHR-SY             PIC 9(3).
+       01 WS-TTL-CUR-X              PIC 9(3).
+       01 WS-TTL-CUR-Y              PIC 9(3).
+       01 WS-TTL-PIX-X              PIC 9(3).
+       01 WS-TTL-PIX-Y              PIC 9(3).
+       01 WS-TTL-I                  PIC 9(3).
+       01 WS-TTL-ROW                PIC 9(3).
+       01 WS-TTL-COL                PIC 9(3).
+       01 WS-TTL-BIT                PIC 9(3).
+       01 WS-TTL-PIX                PIC X.
+       01 WS-TTL-FB-IDX             PIC 9(6).
+
+      *> --- Title screen color: red (like DOOM) ---
+       01 WS-TTL-RGB.
+          05 WS-TTL-R               PIC X VALUE X"CC".
+          05 WS-TTL-G               PIC X VALUE X"00".
+          05 WS-TTL-B               PIC X VALUE X"00".
+      *> --- Subtitle color: gray ---
+       01 WS-TTL-SUB-RGB.
+          05 WS-TTL-SUB-R           PIC X VALUE X"AA".
+          05 WS-TTL-SUB-G           PIC X VALUE X"AA".
+          05 WS-TTL-SUB-B           PIC X VALUE X"AA".
+
+      *> --- Level exit check variables ---
+       01 WS-EXIT-CHK-ROW           PIC S9(5).
+       01 WS-EXIT-CHK-COL           PIC S9(5).

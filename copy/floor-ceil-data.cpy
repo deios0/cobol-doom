@@ -56,3 +56,8 @@
       *> --- Ceiling mirror row ---
        01 WS-FC-CEIL-ROW        PIC S9(5).
        01 WS-FC-CEIL-FB-IDX     PIC 9(6).
+
+      *> --- Grid cell lookup for sector lighting ---
+       01 WS-FC-GRID-X          PIC S9(5).
+       01 WS-FC-GRID-Y          PIC S9(5).
+       01 WS-FC-SEC-LIGHT       PIC 9(3).

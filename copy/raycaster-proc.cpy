@@ -243,9 +243,19 @@
                FUNCTION MOD(WS-TEX-U,
                WT-WIDTH(WS-HIT-TEX-ID))
 
-      *>   --- Lighting from distance ---
-           COMPUTE WS-LIGHT-LEVEL =
-               WS-PERP-DIST * 2
+      *>   --- Lighting from distance + sector light ---
+           IF WS-MAP-Y >= 1
+               AND WS-MAP-Y <= WS-MAP-SIZE
+               AND WS-MAP-X >= 1
+               AND WS-MAP-X <= WS-MAP-SIZE
+               COMPUTE WS-LIGHT-LEVEL =
+                   MC-LIGHT(WS-MAP-Y, WS-MAP-X)
+                   / 8
+                   + WS-PERP-DIST * 2
+           ELSE
+               COMPUTE WS-LIGHT-LEVEL =
+                   WS-PERP-DIST * 2
+           END-IF
            IF WS-LIGHT-LEVEL < 0
                MOVE 0 TO WS-LIGHT-LEVEL
            END-IF

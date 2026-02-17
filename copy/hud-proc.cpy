@@ -362,3 +362,182 @@
            COMPUTE WS-HUD-RECT-H = WS-HUD-FACE-SZ - 2
            PERFORM DRAW-HUD-RECT
            .
+
+      *> ============================================================
+      *> SHOW-TITLE-SCREEN: Display title until SPACE pressed
+      *> Draws "COBOL DOOM 2" at 3x scale, subtitle at 1x scale
+      *> ============================================================
+       SHOW-TITLE-SCREEN.
+      *>   Clear framebuffer to black
+           MOVE LOW-VALUES TO WS-FRAMEBUFFER
+
+      *>   --- Draw "COBOL DOOM 2" centered at 3x scale ---
+      *>   Each char is 5*3=15 wide + 3px space = 18px per char
+      *>   12 chars => 12*18 - 3 = 213 pixels total
+      *>   Start X = (320-213)/2 = 53
+           MOVE 53 TO WS-TTL-CUR-X
+           MOVE 60 TO WS-TTL-CUR-Y
+           PERFORM VARYING WS-TTL-I FROM 1 BY 1
+               UNTIL WS-TTL-I > WS-TTL-TITLE-LEN
+               IF WS-TTL-TITLE-CI(WS-TTL-I) = 0
+      *>           Space character: just advance X
+                   ADD 18 TO WS-TTL-CUR-X
+               ELSE
+      *>           Draw scaled character
+                   MOVE WS-TTL-TITLE-CI(WS-TTL-I)
+                       TO WS-HUD-CHR-IDX
+                   IF WS-HUD-CHR-IDX >= 1
+                       AND WS-HUD-CHR-IDX
+                       <= WS-HUD-CHAR-COUNT
+                       PERFORM DRAW-TITLE-CHAR-3X
+                   END-IF
+                   ADD 18 TO WS-TTL-CUR-X
+               END-IF
+           END-PERFORM
+
+      *>   --- Draw "PRESS SPACE TO START" at 1x ---
+      *>   20 chars => 20*6 - 1 = 119 pixels total
+      *>   Start X = (320-119)/2 = 100
+           MOVE 100 TO WS-TTL-CUR-X
+           MOVE 120 TO WS-TTL-CUR-Y
+           MOVE WS-TTL-SUB-R TO WS-HUD-CUR-R
+           MOVE WS-TTL-SUB-G TO WS-HUD-CUR-G
+           MOVE WS-TTL-SUB-B TO WS-HUD-CUR-B
+           PERFORM VARYING WS-TTL-I FROM 1 BY 1
+               UNTIL WS-TTL-I > WS-TTL-SUB-LEN
+               IF WS-TTL-SUB-CI(WS-TTL-I) = 0
+                   ADD 6 TO WS-TTL-CUR-X
+               ELSE
+                   MOVE WS-TTL-SUB-CI(WS-TTL-I)
+                       TO WS-HUD-CHR-IDX
+                   MOVE WS-TTL-CUR-X TO WS-HUD-CHR-X
+                   MOVE WS-TTL-CUR-Y TO WS-HUD-CHR-Y
+                   IF WS-HUD-CHR-IDX >= 1
+                       AND WS-HUD-CHR-IDX
+                       <= WS-HUD-CHAR-COUNT
+                       PERFORM DRAW-HUD-CHAR
+                   END-IF
+                   ADD 6 TO WS-TTL-CUR-X
+               END-IF
+           END-PERFORM
+
+      *>   Display title frame
+           CALL "sdl_frame" USING WS-FRAMEBUFFER
+                                  WS-SCREEN-W
+                                  WS-SCREEN-H
+
+      *>   Wait for SPACE key (WS-KEY(6))
+           PERFORM UNTIL WS-KEY(6) NOT = 0
+               OR WS-KEY(1) = -1
+               CALL "sdl_input" USING WS-KEYS
+           END-PERFORM
+
+      *>   Check if user quit during title
+           IF WS-KEY(1) = -1
+               MOVE 0 TO WS-RUNNING
+           END-IF
+           .
+
+      *> ============================================================
+      *> DRAW-TITLE-CHAR-3X: Draw one font char at 3x scale
+      *> Uses WS-HUD-CHR-IDX, WS-TTL-CUR-X/Y
+      *> Color: WS-TTL-R/G/B (red)
+      *> ============================================================
+       DRAW-TITLE-CHAR-3X.
+           IF WS-HUD-CHR-IDX < 1
+               OR WS-HUD-CHR-IDX > WS-HUD-CHAR-COUNT
+               EXIT PARAGRAPH
+           END-IF
+
+           PERFORM VARYING WS-TTL-ROW FROM 0 BY 1
+               UNTIL WS-TTL-ROW > 6
+               PERFORM VARYING WS-TTL-COL FROM 0 BY 1
+                   UNTIL WS-TTL-COL > 4
+
+                   COMPUTE WS-TTL-BIT =
+                       WS-TTL-ROW * 5
+                       + WS-TTL-COL + 1
+
+                   MOVE WS-HUD-CHAR-BMP(
+                       WS-HUD-CHR-IDX)
+                       (WS-TTL-BIT:1)
+                       TO WS-TTL-PIX
+
+                   IF WS-TTL-PIX = "1"
+      *>               Draw a 3x3 block for this pixel
+                       PERFORM VARYING WS-TTL-CHR-SY
+                           FROM 0 BY 1
+                           UNTIL WS-TTL-CHR-SY >= 3
+                           PERFORM VARYING
+                               WS-TTL-CHR-SX
+                               FROM 0 BY 1
+                               UNTIL WS-TTL-CHR-SX
+                               >= 3
+                               COMPUTE WS-TTL-PIX-X =
+                                   WS-TTL-CUR-X
+                                   + WS-TTL-COL * 3
+                                   + WS-TTL-CHR-SX
+                               COMPUTE WS-TTL-PIX-Y =
+                                   WS-TTL-CUR-Y
+                                   + WS-TTL-ROW * 3
+                                   + WS-TTL-CHR-SY
+                               IF WS-TTL-PIX-X >= 1
+                                   AND WS-TTL-PIX-X
+                                   <= 320
+                                   AND WS-TTL-PIX-Y
+                                   >= 1
+                                   AND WS-TTL-PIX-Y
+                                   <= 200
+                                   COMPUTE
+                                   WS-TTL-FB-IDX =
+                                   ((WS-TTL-PIX-Y
+                                   - 1) * 320
+                                   + (WS-TTL-PIX-X
+                                   - 1)) * 4 + 1
+                                   MOVE WS-TTL-R
+                                   TO WS-FB-BYTE(
+                                   WS-TTL-FB-IDX)
+                                   ADD 1 TO
+                                   WS-TTL-FB-IDX
+                                   MOVE WS-TTL-G
+                                   TO WS-FB-BYTE(
+                                   WS-TTL-FB-IDX)
+                                   ADD 1 TO
+                                   WS-TTL-FB-IDX
+                                   MOVE WS-TTL-B
+                                   TO WS-FB-BYTE(
+                                   WS-TTL-FB-IDX)
+                                   ADD 1 TO
+                                   WS-TTL-FB-IDX
+                                   MOVE X"FF"
+                                   TO WS-FB-BYTE(
+                                   WS-TTL-FB-IDX)
+                               END-IF
+                           END-PERFORM
+                       END-PERFORM
+                   END-IF
+               END-PERFORM
+           END-PERFORM
+           .
+
+      *> ============================================================
+      *> CHECK-LEVEL-EXIT: Check if player reached exit area
+      *> Exit if player is at far edge: row < 5, col > 120
+      *> Sets WS-GAME-STATE = 2 (won) and shows message
+      *> ============================================================
+       CHECK-LEVEL-EXIT.
+      *>   Compute player grid position
+           COMPUTE WS-EXIT-CHK-ROW =
+               FUNCTION INTEGER-PART(WS-PY) + 1
+           COMPUTE WS-EXIT-CHK-COL =
+               FUNCTION INTEGER-PART(WS-PX) + 1
+
+      *>   Check exit area: far edge of map
+           IF WS-EXIT-CHK-ROW >= 1
+               AND WS-EXIT-CHK-ROW < 5
+               AND WS-EXIT-CHK-COL > 120
+               AND WS-EXIT-CHK-COL <= WS-MAP-SIZE
+               MOVE 2 TO WS-GAME-STATE
+               MOVE 0 TO WS-RUNNING
+           END-IF
+           .
