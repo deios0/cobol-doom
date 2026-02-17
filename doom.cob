@@ -79,14 +79,67 @@
        01 WS-KILLS        PIC 9(2)   VALUE 0.
        01 WS-TOTAL-ENEMIES PIC 9(2)  VALUE 0.
 
+       01 WS-SCREEN-W     PIC 9(3)   VALUE 120.
+       01 WS-SCREEN-H     PIC 9(2)   VALUE 40.
+       01 WS-FOV          PIC 9(2)   VALUE 60.
+       01 WS-HALF-FOV     PIC 9(2)   VALUE 30.
+
+       01 WS-RAY-ANGLE    PIC S9(5).
+       01 WS-RAY-DIR-X    PIC S9(3)V9(6).
+       01 WS-RAY-DIR-Y    PIC S9(3)V9(6).
+
+       01 WS-MAP-X        PIC S9(3).
+       01 WS-MAP-Y        PIC S9(3).
+       01 WS-STEP-X       PIC S9(1).
+       01 WS-STEP-Y       PIC S9(1).
+
+       01 WS-SIDE-DIST-X  PIC S9(5)V9(6).
+       01 WS-SIDE-DIST-Y  PIC S9(5)V9(6).
+       01 WS-DELTA-DIST-X PIC S9(5)V9(6).
+       01 WS-DELTA-DIST-Y PIC S9(5)V9(6).
+
+       01 WS-HIT          PIC 9.
+       01 WS-SIDE         PIC 9.
+       01 WS-PERP-DIST    PIC S9(5)V9(6).
+       01 WS-WALL-H       PIC S9(3).
+       01 WS-WALL-TOP     PIC S9(3).
+       01 WS-WALL-BOT     PIC S9(3).
+       01 WS-MAX-STEPS    PIC 9(3)   VALUE 064.
+       01 WS-STEP-COUNT   PIC 9(3).
+       01 WS-CUR-COL      PIC 9(3).
+       01 WS-ROW          PIC 9(3).
+
+       01 WS-DEPTH-BUF.
+          05 WS-DEPTH-VAL PIC S9(5)V9(4) OCCURS 120 TIMES.
+       01 WS-WALL-H-BUF.
+          05 WS-WALLH-VAL PIC S9(3) OCCURS 120 TIMES.
+       01 WS-WALL-TOP-BUF.
+          05 WS-WALLT-VAL PIC S9(3) OCCURS 120 TIMES.
+       01 WS-WALL-BOT-BUF.
+          05 WS-WALLB-VAL PIC S9(3) OCCURS 120 TIMES.
+       01 WS-HIT-CELL-BUF.
+          05 WS-HITC-VAL  PIC 9 OCCURS 120 TIMES.
+
        PROCEDURE DIVISION.
        MAIN-PROGRAM.
            PERFORM INIT-ANSI
            PERFORM INIT-TRIG
            PERFORM INIT-MAP
            PERFORM INIT-PLAYER
-           DISPLAY WS-ANSI-CLEAR
-           PERFORM DEBUG-MAP
+           PERFORM CAST-ALL-RAYS
+           DISPLAY "Raycasting complete."
+           DISPLAY "Col 1  dist: " WS-DEPTH-VAL(1)
+               " height: " WS-WALLH-VAL(1)
+               " top: " WS-WALLT-VAL(1)
+               " bot: " WS-WALLB-VAL(1)
+           DISPLAY "Col 60 dist: " WS-DEPTH-VAL(60)
+               " height: " WS-WALLH-VAL(60)
+               " top: " WS-WALLT-VAL(60)
+               " bot: " WS-WALLB-VAL(60)
+           DISPLAY "Col 120 dist: " WS-DEPTH-VAL(120)
+               " height: " WS-WALLH-VAL(120)
+               " top: " WS-WALLT-VAL(120)
+               " bot: " WS-WALLB-VAL(120)
            STOP RUN.
 
        TEST-INPUT.
@@ -184,6 +237,135 @@
            MOVE 0         TO WS-PA
            MOVE 100       TO WS-HEALTH
            MOVE 25        TO WS-AMMO.
+
+       CAST-ALL-RAYS.
+           PERFORM VARYING WS-CUR-COL FROM 1 BY 1
+               UNTIL WS-CUR-COL > WS-SCREEN-W
+               PERFORM CAST-ONE-RAY
+           END-PERFORM.
+
+       CAST-ONE-RAY.
+      *> Calculate ray angle for this column
+           COMPUTE WS-RAY-ANGLE =
+               WS-PA - WS-HALF-FOV +
+               WS-CUR-COL * WS-FOV / WS-SCREEN-W
+
+      *> Get sin/cos for ray direction
+           MOVE WS-RAY-ANGLE TO WS-ANGLE-WORK
+           PERFORM GET-SIN
+           PERFORM GET-COS
+           MOVE WS-RAY-SIN TO WS-RAY-DIR-Y
+           MOVE WS-RAY-COS TO WS-RAY-DIR-X
+
+      *> Starting map cell (0-based position -> 1-based array)
+           COMPUTE WS-MAP-X =
+               FUNCTION INTEGER-PART(WS-PX) + 1
+           COMPUTE WS-MAP-Y =
+               FUNCTION INTEGER-PART(WS-PY) + 1
+
+      *> Calculate delta distances
+           IF WS-RAY-DIR-X NOT = 0
+               COMPUTE WS-DELTA-DIST-X =
+                   FUNCTION ABS(1.0 / WS-RAY-DIR-X)
+           ELSE
+               MOVE 999.0 TO WS-DELTA-DIST-X
+           END-IF
+           IF WS-RAY-DIR-Y NOT = 0
+               COMPUTE WS-DELTA-DIST-Y =
+                   FUNCTION ABS(1.0 / WS-RAY-DIR-Y)
+           ELSE
+               MOVE 999.0 TO WS-DELTA-DIST-Y
+           END-IF
+
+      *> Step direction and initial side distances
+           IF WS-RAY-DIR-X < 0
+               MOVE -1 TO WS-STEP-X
+               COMPUTE WS-SIDE-DIST-X =
+                   (WS-PX - FUNCTION INTEGER-PART(WS-PX))
+                   * WS-DELTA-DIST-X
+           ELSE
+               MOVE 1 TO WS-STEP-X
+               COMPUTE WS-SIDE-DIST-X =
+                   (FUNCTION INTEGER-PART(WS-PX) + 1.0 - WS-PX)
+                   * WS-DELTA-DIST-X
+           END-IF
+           IF WS-RAY-DIR-Y < 0
+               MOVE -1 TO WS-STEP-Y
+               COMPUTE WS-SIDE-DIST-Y =
+                   (WS-PY - FUNCTION INTEGER-PART(WS-PY))
+                   * WS-DELTA-DIST-Y
+           ELSE
+               MOVE 1 TO WS-STEP-Y
+               COMPUTE WS-SIDE-DIST-Y =
+                   (FUNCTION INTEGER-PART(WS-PY) + 1.0 - WS-PY)
+                   * WS-DELTA-DIST-Y
+           END-IF
+
+      *> DDA loop
+           MOVE 0 TO WS-HIT
+           MOVE 0 TO WS-STEP-COUNT
+           PERFORM UNTIL WS-HIT = 1
+               OR WS-STEP-COUNT > WS-MAX-STEPS
+               IF WS-SIDE-DIST-X < WS-SIDE-DIST-Y
+                   ADD WS-DELTA-DIST-X TO WS-SIDE-DIST-X
+                   ADD WS-STEP-X TO WS-MAP-X
+                   MOVE 0 TO WS-SIDE
+               ELSE
+                   ADD WS-DELTA-DIST-Y TO WS-SIDE-DIST-Y
+                   ADD WS-STEP-Y TO WS-MAP-Y
+                   MOVE 1 TO WS-SIDE
+               END-IF
+               ADD 1 TO WS-STEP-COUNT
+      *> Check bounds (1-based: valid range 1-16)
+               IF WS-MAP-X >= 1 AND WS-MAP-X <= 16
+                   AND WS-MAP-Y >= 1 AND WS-MAP-Y <= 16
+                   IF WS-MAP-CELL(WS-MAP-Y, WS-MAP-X) >= 1
+                       MOVE 1 TO WS-HIT
+                       MOVE WS-MAP-CELL(WS-MAP-Y, WS-MAP-X)
+                           TO WS-HITC-VAL(WS-CUR-COL)
+                   END-IF
+               ELSE
+                   MOVE 1 TO WS-HIT
+                   MOVE 1 TO WS-HITC-VAL(WS-CUR-COL)
+               END-IF
+           END-PERFORM
+
+      *> Perpendicular distance (fixes fisheye)
+           IF WS-SIDE = 0
+               COMPUTE WS-PERP-DIST =
+                   WS-SIDE-DIST-X - WS-DELTA-DIST-X
+           ELSE
+               COMPUTE WS-PERP-DIST =
+                   WS-SIDE-DIST-Y - WS-DELTA-DIST-Y
+           END-IF
+           IF WS-PERP-DIST < 0.1
+               MOVE 0.1 TO WS-PERP-DIST
+           END-IF
+
+      *> Wall height on screen
+           COMPUTE WS-WALL-H =
+               WS-SCREEN-H / WS-PERP-DIST
+           IF WS-WALL-H > WS-SCREEN-H
+               MOVE WS-SCREEN-H TO WS-WALL-H
+           END-IF
+
+      *> Wall top/bottom rows
+           COMPUTE WS-WALL-TOP =
+               (WS-SCREEN-H / 2) - (WS-WALL-H / 2) + 1
+           IF WS-WALL-TOP < 1
+               MOVE 1 TO WS-WALL-TOP
+           END-IF
+           COMPUTE WS-WALL-BOT =
+               (WS-SCREEN-H / 2) + (WS-WALL-H / 2)
+           IF WS-WALL-BOT > WS-SCREEN-H
+               MOVE WS-SCREEN-H TO WS-WALL-BOT
+           END-IF
+
+      *> Store in buffers
+           MOVE WS-PERP-DIST TO WS-DEPTH-VAL(WS-CUR-COL)
+           MOVE WS-WALL-H TO WS-WALLH-VAL(WS-CUR-COL)
+           MOVE WS-WALL-TOP TO WS-WALLT-VAL(WS-CUR-COL)
+           MOVE WS-WALL-BOT TO WS-WALLB-VAL(WS-CUR-COL).
 
        DEBUG-MAP.
            PERFORM VARYING WS-I FROM 1 BY 1
