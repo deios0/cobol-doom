@@ -46,6 +46,15 @@
       *> --- Floor/ceiling data ---
            COPY "floor-ceil-data.cpy".
 
+      *> --- Sprite data ---
+           COPY "sprites-data.cpy".
+
+      *> --- Doors and pickups data ---
+           COPY "doors-data.cpy".
+
+      *> --- HUD data ---
+           COPY "hud-data.cpy".
+
        PROCEDURE DIVISION.
        MAIN-PROGRAM.
       *>   Initialize SDL window
@@ -76,6 +85,13 @@
       *>   Initialize player
            PERFORM INIT-PLAYER
 
+      *>   Initialize sprites (enemies from THINGS)
+           PERFORM INIT-SPRITES
+
+      *>   Initialize doors and pickups
+           PERFORM INIT-DOORS
+           PERFORM INIT-PICKUPS
+
       *>   Game state = playing
            MOVE 1 TO WS-GAME-STATE
 
@@ -90,6 +106,12 @@
 
       *>       Cast rays and render textured walls (overwrites)
                PERFORM CAST-ALL-RAYS
+
+      *>       Render sprites (depth-sorted, after walls)
+               PERFORM RENDER-ALL-SPRITES
+
+      *>       Render HUD (status bar, on top of everything)
+               PERFORM RENDER-HUD
 
       *>       Display frame via SDL
                CALL "sdl_frame" USING WS-FRAMEBUFFER
@@ -106,6 +128,11 @@
 
       *>       Process movement
                PERFORM PROCESS-MOVEMENT
+
+      *>       Door/pickup mechanics
+               PERFORM CHECK-USE-KEY
+               PERFORM UPDATE-DOORS
+               PERFORM CHECK-PICKUPS
 
            END-PERFORM
 
@@ -138,3 +165,18 @@
       *> Floor/ceiling procedures
       *> ============================================================
            COPY "floor-ceil-proc.cpy".
+
+      *> ============================================================
+      *> Sprite rendering procedures
+      *> ============================================================
+           COPY "sprites-proc.cpy".
+
+      *> ============================================================
+      *> Door and pickup procedures
+      *> ============================================================
+           COPY "doors-proc.cpy".
+
+      *> ============================================================
+      *> HUD procedures
+      *> ============================================================
+           COPY "hud-proc.cpy".
