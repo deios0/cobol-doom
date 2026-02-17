@@ -187,7 +187,9 @@
            PERFORM RENDER-CROSSHAIR
            PERFORM DRAW-FRAME
            PERFORM READ-INPUT
-           PERFORM PROCESS-INPUT.
+           PERFORM PROCESS-INPUT
+           PERFORM MOVE-ENEMIES
+           PERFORM CHECK-ENEMY-ATTACKS.
 
        READ-INPUT.
            CALL "getchar" RETURNING WS-KEY-CODE
@@ -236,6 +238,9 @@
                    IF WS-PA >= 360
                        SUBTRACT 360 FROM WS-PA
                    END-IF
+      *> Shoot
+               WHEN " "
+                   PERFORM SHOOT
       *> Quit
                WHEN "q"
                WHEN "Q"
@@ -668,6 +673,147 @@
                        MOVE 0 TO WS-MAP-CELL(WS-I, WS-J)
                    END-IF
                END-PERFORM
+           END-PERFORM.
+
+       MOVE-ENEMIES.
+           PERFORM VARYING WS-ENEMY-IDX FROM 1 BY 1
+               UNTIL WS-ENEMY-IDX > WS-TOTAL-ENEMIES
+               IF WS-EALIVE(WS-ENEMY-IDX) = 1
+                   PERFORM MOVE-ONE-ENEMY
+               END-IF
+           END-PERFORM.
+
+       MOVE-ONE-ENEMY.
+      *> Direction to player
+           COMPUTE WS-ENEMY-DX =
+               WS-PX - WS-EX(WS-ENEMY-IDX)
+           COMPUTE WS-ENEMY-DY =
+               WS-PY - WS-EY(WS-ENEMY-IDX)
+           COMPUTE WS-ABS-DX =
+               FUNCTION ABS(WS-ENEMY-DX)
+           COMPUTE WS-ABS-DY =
+               FUNCTION ABS(WS-ENEMY-DY)
+
+      *> Move along axis with larger difference
+           IF WS-ABS-DX > WS-ABS-DY
+               IF WS-ENEMY-DX > 0
+                   COMPUTE WS-NEW-X =
+                       WS-EX(WS-ENEMY-IDX) +
+                       WS-ESPEED(WS-ENEMY-IDX)
+               ELSE
+                   COMPUTE WS-NEW-X =
+                       WS-EX(WS-ENEMY-IDX) -
+                       WS-ESPEED(WS-ENEMY-IDX)
+               END-IF
+               MOVE WS-EY(WS-ENEMY-IDX) TO WS-NEW-Y
+           ELSE
+               MOVE WS-EX(WS-ENEMY-IDX) TO WS-NEW-X
+               IF WS-ENEMY-DY > 0
+                   COMPUTE WS-NEW-Y =
+                       WS-EY(WS-ENEMY-IDX) +
+                       WS-ESPEED(WS-ENEMY-IDX)
+               ELSE
+                   COMPUTE WS-NEW-Y =
+                       WS-EY(WS-ENEMY-IDX) -
+                       WS-ESPEED(WS-ENEMY-IDX)
+               END-IF
+           END-IF
+
+      *> Check wall collision for enemy
+           COMPUTE WS-CHK-X =
+               FUNCTION INTEGER-PART(WS-NEW-X) + 1
+           COMPUTE WS-CHK-Y =
+               FUNCTION INTEGER-PART(WS-NEW-Y) + 1
+           IF WS-CHK-X >= 1 AND WS-CHK-X <= 16
+               AND WS-CHK-Y >= 1 AND WS-CHK-Y <= 16
+               IF WS-MAP-CELL(WS-CHK-Y, WS-CHK-X) = 0
+                   OR WS-MAP-CELL(WS-CHK-Y, WS-CHK-X) = 2
+                   MOVE WS-NEW-X TO WS-EX(WS-ENEMY-IDX)
+                   MOVE WS-NEW-Y TO WS-EY(WS-ENEMY-IDX)
+               END-IF
+           END-IF.
+
+       CHECK-ENEMY-ATTACKS.
+           PERFORM VARYING WS-ENEMY-IDX FROM 1 BY 1
+               UNTIL WS-ENEMY-IDX > WS-TOTAL-ENEMIES
+               IF WS-EALIVE(WS-ENEMY-IDX) = 1
+                   COMPUTE WS-ENEMY-DIST =
+                       FUNCTION SQRT(
+                           (WS-PX - WS-EX(WS-ENEMY-IDX)) ** 2
+                           + (WS-PY - WS-EY(WS-ENEMY-IDX)) ** 2
+                       )
+                   IF WS-ENEMY-DIST < 1.5
+                       SUBTRACT 5 FROM WS-HEALTH
+                       IF WS-HEALTH <= 0
+                           MOVE 0 TO WS-HEALTH
+                       END-IF
+                   END-IF
+               END-IF
+           END-PERFORM.
+
+       SHOOT.
+           IF WS-AMMO <= 0
+               EXIT PARAGRAPH
+           END-IF
+           SUBTRACT 1 FROM WS-AMMO
+
+      *> Cast a ray from player position along facing angle
+      *> Check each enemy: is it close to the ray and closer
+      *> than the nearest wall?
+           MOVE WS-PA TO WS-ANGLE-WORK
+           PERFORM GET-SIN
+           PERFORM GET-COS
+
+      *> Check center column depth for max range
+           MOVE WS-DEPTH-VAL(60) TO WS-TEMP
+
+           PERFORM VARYING WS-ENEMY-IDX FROM 1 BY 1
+               UNTIL WS-ENEMY-IDX > WS-TOTAL-ENEMIES
+               IF WS-EALIVE(WS-ENEMY-IDX) = 1
+      *> Calculate angle to this enemy
+                   COMPUTE WS-ENEMY-DX =
+                       WS-EX(WS-ENEMY-IDX) - WS-PX
+                   COMPUTE WS-ENEMY-DY =
+                       WS-EY(WS-ENEMY-IDX) - WS-PY
+                   COMPUTE WS-ENEMY-DIST =
+                       FUNCTION SQRT(
+                           WS-ENEMY-DX ** 2 +
+                           WS-ENEMY-DY ** 2)
+      *> Simple hit check: enemy within 5 degrees of
+      *> center and closer than wall
+                   IF WS-ENEMY-DX NOT = 0
+                       COMPUTE WS-ATAN-RESULT =
+                           FUNCTION ATAN(
+                               WS-ENEMY-DY / WS-ENEMY-DX)
+                       COMPUTE WS-ENEMY-ANGLE =
+                           WS-ATAN-RESULT * 180 / WS-PI
+                       IF WS-ENEMY-DX < 0
+                           ADD 180 TO WS-ENEMY-ANGLE
+                       END-IF
+                       IF WS-ENEMY-ANGLE < 0
+                           ADD 360 TO WS-ENEMY-ANGLE
+                       END-IF
+                       COMPUTE WS-ANGLE-DIFF =
+                           WS-ENEMY-ANGLE - WS-PA
+                       IF WS-ANGLE-DIFF > 180
+                           SUBTRACT 360 FROM WS-ANGLE-DIFF
+                       END-IF
+                       IF WS-ANGLE-DIFF < -180
+                           ADD 360 TO WS-ANGLE-DIFF
+                       END-IF
+      *> Hit if within 5 degrees and closer than wall
+                       IF FUNCTION ABS(WS-ANGLE-DIFF) < 5
+                           AND WS-ENEMY-DIST < WS-TEMP
+                           SUBTRACT 25 FROM
+                               WS-EHEALTH(WS-ENEMY-IDX)
+                           IF WS-EHEALTH(WS-ENEMY-IDX) <= 0
+                               MOVE 0 TO
+                                   WS-EALIVE(WS-ENEMY-IDX)
+                               ADD 1 TO WS-KILLS
+                           END-IF
+                       END-IF
+                   END-IF
+               END-IF
            END-PERFORM.
 
        RENDER-ENEMIES.
