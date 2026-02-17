@@ -52,6 +52,12 @@
       *> --- Doors and pickups data ---
            COPY "doors-data.cpy".
 
+      *> --- Enemy AI data ---
+           COPY "enemies-data.cpy".
+
+      *> --- Weapons data ---
+           COPY "weapons-data.cpy".
+
       *> --- HUD data ---
            COPY "hud-data.cpy".
 
@@ -88,9 +94,15 @@
       *>   Initialize sprites (enemies from THINGS)
            PERFORM INIT-SPRITES
 
+      *>   Initialize enemy AI (after sprites loaded)
+           PERFORM EN-INIT-AI
+
       *>   Initialize doors and pickups
            PERFORM INIT-DOORS
            PERFORM INIT-PICKUPS
+
+      *>   Initialize weapons (load pistol sprite)
+           PERFORM INIT-WEAPONS
 
       *>   Game state = playing
            MOVE 1 TO WS-GAME-STATE
@@ -110,6 +122,10 @@
       *>       Render sprites (depth-sorted, after walls)
                PERFORM RENDER-ALL-SPRITES
 
+      *>       Render weapon and crosshair (over 3D, under HUD)
+               PERFORM RENDER-WEAPON
+               PERFORM RENDER-CROSSHAIR
+
       *>       Render HUD (status bar, on top of everything)
                PERFORM RENDER-HUD
 
@@ -128,6 +144,10 @@
 
       *>       Process movement
                PERFORM PROCESS-MOVEMENT
+
+      *>       Enemy AI and combat
+               PERFORM UPDATE-ENEMIES
+               PERFORM PROCESS-FIRE
 
       *>       Door/pickup mechanics
                PERFORM CHECK-USE-KEY
@@ -170,6 +190,16 @@
       *> Sprite rendering procedures
       *> ============================================================
            COPY "sprites-proc.cpy".
+
+      *> ============================================================
+      *> Enemy AI procedures
+      *> ============================================================
+           COPY "enemies-proc.cpy".
+
+      *> ============================================================
+      *> Weapons procedures
+      *> ============================================================
+           COPY "weapons-proc.cpy".
 
       *> ============================================================
       *> Door and pickup procedures
