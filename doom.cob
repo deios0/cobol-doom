@@ -143,12 +143,34 @@
        01 WS-CHK-X        PIC S9(3).
        01 WS-CHK-Y        PIC S9(3).
 
+       01 WS-ENEMIES.
+          05 WS-ENEMY OCCURS 10 TIMES.
+             10 WS-EX       PIC S9(3)V9(4).
+             10 WS-EY       PIC S9(3)V9(4).
+             10 WS-EALIVE   PIC 9.
+             10 WS-EHEALTH  PIC 9(2).
+             10 WS-ESPEED   PIC 9V9(2).
+
+       01 WS-ENEMY-IDX    PIC 9(2).
+       01 WS-ENEMY-DX     PIC S9(3)V9(4).
+       01 WS-ENEMY-DY     PIC S9(3)V9(4).
+       01 WS-ENEMY-ANGLE  PIC S9(5)V9(4).
+       01 WS-ENEMY-DIST   PIC S9(5)V9(4).
+       01 WS-ENEMY-COL    PIC S9(5).
+       01 WS-ENEMY-SIZE   PIC S9(3).
+       01 WS-ANGLE-DIFF   PIC S9(5)V9(4).
+       01 WS-ATAN-RESULT  PIC S9(3)V9(6).
+       01 WS-ABS-DX       PIC S9(3)V9(4).
+       01 WS-ABS-DY       PIC S9(3)V9(4).
+       01 WS-TEMP         PIC S9(5)V9(4).
+
        PROCEDURE DIVISION.
        MAIN-PROGRAM.
            PERFORM INIT-ANSI
            PERFORM INIT-TRIG
            PERFORM INIT-MAP
            PERFORM INIT-PLAYER
+           PERFORM SPAWN-ENEMIES
            CALL "SYSTEM" USING WS-STTY-RAW
            DISPLAY WS-ANSI-CLEAR
            MOVE 0 TO WS-GAME-OVER
@@ -161,6 +183,7 @@
        GAME-LOOP.
            PERFORM CAST-ALL-RAYS
            PERFORM RENDER-FRAME
+           PERFORM RENDER-ENEMIES
            PERFORM RENDER-CROSSHAIR
            PERFORM DRAW-FRAME
            PERFORM READ-INPUT
@@ -624,3 +647,128 @@
            END-PERFORM
            DISPLAY "Player at: " WS-PX " , " WS-PY
                " angle: " WS-PA.
+
+       SPAWN-ENEMIES.
+           MOVE 0 TO WS-TOTAL-ENEMIES
+           PERFORM VARYING WS-I FROM 1 BY 1
+               UNTIL WS-I > 16
+               PERFORM VARYING WS-J FROM 1 BY 1
+                   UNTIL WS-J > 16
+                   IF WS-MAP-CELL(WS-I, WS-J) = 2
+                       ADD 1 TO WS-TOTAL-ENEMIES
+                       COMPUTE WS-EX(WS-TOTAL-ENEMIES) =
+                           WS-J - 1 + 0.5
+                       COMPUTE WS-EY(WS-TOTAL-ENEMIES) =
+                           WS-I - 1 + 0.5
+                       MOVE 1  TO WS-EALIVE(WS-TOTAL-ENEMIES)
+                       MOVE 10 TO WS-EHEALTH(WS-TOTAL-ENEMIES)
+                       MOVE 0.40 TO
+                           WS-ESPEED(WS-TOTAL-ENEMIES)
+      *> Clear spawn marker from map
+                       MOVE 0 TO WS-MAP-CELL(WS-I, WS-J)
+                   END-IF
+               END-PERFORM
+           END-PERFORM.
+
+       RENDER-ENEMIES.
+           PERFORM VARYING WS-ENEMY-IDX FROM 1 BY 1
+               UNTIL WS-ENEMY-IDX > WS-TOTAL-ENEMIES
+               IF WS-EALIVE(WS-ENEMY-IDX) = 1
+                   PERFORM RENDER-ONE-ENEMY
+               END-IF
+           END-PERFORM.
+
+       RENDER-ONE-ENEMY.
+      *> Direction to enemy
+           COMPUTE WS-ENEMY-DX =
+               WS-EX(WS-ENEMY-IDX) - WS-PX
+           COMPUTE WS-ENEMY-DY =
+               WS-EY(WS-ENEMY-IDX) - WS-PY
+
+      *> Distance to enemy
+           COMPUTE WS-ENEMY-DIST =
+               FUNCTION SQRT(
+                   WS-ENEMY-DX * WS-ENEMY-DX +
+                   WS-ENEMY-DY * WS-ENEMY-DY)
+           IF WS-ENEMY-DIST < 0.1
+               MOVE 0.1 TO WS-ENEMY-DIST
+           END-IF
+
+      *> Angle to enemy using ATAN
+      *> We need atan2(dy, dx). COBOL only has ATAN.
+      *> Handle quadrants manually.
+           IF WS-ENEMY-DX NOT = 0
+               COMPUTE WS-ATAN-RESULT =
+                   FUNCTION ATAN(
+                       WS-ENEMY-DY / WS-ENEMY-DX)
+               COMPUTE WS-ENEMY-ANGLE =
+                   WS-ATAN-RESULT * 180 / WS-PI
+      *> Adjust for quadrant (atan gives -90 to +90)
+               IF WS-ENEMY-DX < 0
+                   ADD 180 TO WS-ENEMY-ANGLE
+               END-IF
+           ELSE
+               IF WS-ENEMY-DY > 0
+                   MOVE 90 TO WS-ENEMY-ANGLE
+               ELSE
+                   MOVE 270 TO WS-ENEMY-ANGLE
+               END-IF
+           END-IF
+           IF WS-ENEMY-ANGLE < 0
+               ADD 360 TO WS-ENEMY-ANGLE
+           END-IF
+
+      *> Angle difference from player facing
+           COMPUTE WS-ANGLE-DIFF =
+               WS-ENEMY-ANGLE - WS-PA
+           IF WS-ANGLE-DIFF > 180
+               SUBTRACT 360 FROM WS-ANGLE-DIFF
+           END-IF
+           IF WS-ANGLE-DIFF < -180
+               ADD 360 TO WS-ANGLE-DIFF
+           END-IF
+
+      *> Check if within FOV (-30 to +30)
+           IF WS-ANGLE-DIFF >= -30 AND WS-ANGLE-DIFF <= 30
+      *> Map to screen column (1-based)
+               COMPUTE WS-ENEMY-COL =
+                   (WS-ANGLE-DIFF + 30) * WS-SCREEN-W / 60 + 1
+               IF WS-ENEMY-COL >= 1
+                   AND WS-ENEMY-COL <= WS-SCREEN-W
+      *> Depth check: only draw if closer than wall
+                   IF WS-ENEMY-DIST <
+                       WS-DEPTH-VAL(WS-ENEMY-COL)
+      *> Calculate sprite size
+                       COMPUTE WS-ENEMY-SIZE =
+                           WS-SCREEN-H / WS-ENEMY-DIST / 3
+                       IF WS-ENEMY-SIZE > 10
+                           MOVE 10 TO WS-ENEMY-SIZE
+                       END-IF
+                       IF WS-ENEMY-SIZE < 1
+                           MOVE 1 TO WS-ENEMY-SIZE
+                       END-IF
+      *> Draw sprite
+                       PERFORM DRAW-ENEMY-SPRITE
+                   END-IF
+               END-IF
+           END-IF.
+
+       DRAW-ENEMY-SPRITE.
+      *> Draw "M" vertically centered at WS-ENEMY-COL
+           COMPUTE WS-WALL-TOP =
+               (WS-SCREEN-H / 2) - WS-ENEMY-SIZE
+           COMPUTE WS-WALL-BOT =
+               (WS-SCREEN-H / 2) + WS-ENEMY-SIZE
+           IF WS-WALL-TOP < 1
+               MOVE 1 TO WS-WALL-TOP
+           END-IF
+           IF WS-WALL-BOT > WS-SCREEN-H
+               MOVE WS-SCREEN-H TO WS-WALL-BOT
+           END-IF
+           PERFORM VARYING WS-ROW FROM WS-WALL-TOP BY 1
+               UNTIL WS-ROW > WS-WALL-BOT
+               MOVE "M" TO
+                   WS-FRAME-CELL(WS-ROW, WS-ENEMY-COL)
+               MOVE 5 TO
+                   WS-COLOR-CELL(WS-ROW, WS-ENEMY-COL)
+           END-PERFORM.
