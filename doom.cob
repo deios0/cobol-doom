@@ -126,17 +126,115 @@
        01 WS-SHADE-CHAR   PIC X.
        01 WS-WALL-COLOR   PIC 9.
 
+       01 WS-MOVE-SPEED   PIC 9V9(4) VALUE 0.3000.
+       01 WS-TURN-SPEED   PIC 9(2)   VALUE 10.
+       01 WS-NEW-X        PIC S9(3)V9(4).
+       01 WS-NEW-Y        PIC S9(3)V9(4).
+       01 WS-CHK-X        PIC S9(3).
+       01 WS-CHK-Y        PIC S9(3).
+
        PROCEDURE DIVISION.
        MAIN-PROGRAM.
            PERFORM INIT-ANSI
            PERFORM INIT-TRIG
            PERFORM INIT-MAP
            PERFORM INIT-PLAYER
+           CALL "SYSTEM" USING WS-STTY-RAW
            DISPLAY WS-ANSI-CLEAR
+           MOVE 0 TO WS-GAME-OVER
+           PERFORM GAME-LOOP UNTIL WS-GAME-OVER = 1
+           CALL "SYSTEM" USING WS-STTY-SANE
+           DISPLAY WS-ANSI-CLEAR
+           DISPLAY "Thanks for playing DOOM COBOL!"
+           STOP RUN.
+
+       GAME-LOOP.
            PERFORM CAST-ALL-RAYS
            PERFORM RENDER-FRAME
            PERFORM DRAW-FRAME
-           STOP RUN.
+           PERFORM READ-INPUT
+           PERFORM PROCESS-INPUT.
+
+       READ-INPUT.
+           CALL "getchar" RETURNING WS-KEY-CODE
+           IF WS-KEY-CODE = -1
+               MOVE "q" TO WS-KEY-CHAR
+           ELSE
+               MOVE FUNCTION CHAR(WS-KEY-CODE + 1)
+                   TO WS-KEY-CHAR
+           END-IF.
+
+       PROCESS-INPUT.
+           EVALUATE WS-KEY-CHAR
+      *> Forward
+               WHEN "w"
+               WHEN "W"
+                   MOVE WS-PA TO WS-ANGLE-WORK
+                   PERFORM GET-SIN
+                   PERFORM GET-COS
+                   COMPUTE WS-NEW-X =
+                       WS-PX + WS-RAY-COS * WS-MOVE-SPEED
+                   COMPUTE WS-NEW-Y =
+                       WS-PY + WS-RAY-SIN * WS-MOVE-SPEED
+                   PERFORM CHECK-COLLISION
+      *> Backward
+               WHEN "s"
+               WHEN "S"
+                   MOVE WS-PA TO WS-ANGLE-WORK
+                   PERFORM GET-SIN
+                   PERFORM GET-COS
+                   COMPUTE WS-NEW-X =
+                       WS-PX - WS-RAY-COS * WS-MOVE-SPEED
+                   COMPUTE WS-NEW-Y =
+                       WS-PY - WS-RAY-SIN * WS-MOVE-SPEED
+                   PERFORM CHECK-COLLISION
+      *> Rotate left
+               WHEN "a"
+               WHEN "A"
+                   SUBTRACT WS-TURN-SPEED FROM WS-PA
+                   IF WS-PA < 0
+                       ADD 360 TO WS-PA
+                   END-IF
+      *> Rotate right
+               WHEN "d"
+               WHEN "D"
+                   ADD WS-TURN-SPEED TO WS-PA
+                   IF WS-PA >= 360
+                       SUBTRACT 360 FROM WS-PA
+                   END-IF
+      *> Quit
+               WHEN "q"
+               WHEN "Q"
+                   MOVE 1 TO WS-GAME-OVER
+           END-EVALUATE.
+
+       CHECK-COLLISION.
+      *> Check X movement
+           COMPUTE WS-CHK-X =
+               FUNCTION INTEGER-PART(WS-NEW-X) + 1
+           COMPUTE WS-CHK-Y =
+               FUNCTION INTEGER-PART(WS-PY) + 1
+           IF WS-CHK-X >= 1 AND WS-CHK-X <= 16
+               AND WS-CHK-Y >= 1 AND WS-CHK-Y <= 16
+               IF WS-MAP-CELL(WS-CHK-Y, WS-CHK-X) = 0
+                   OR WS-MAP-CELL(WS-CHK-Y, WS-CHK-X) = 2
+                   OR WS-MAP-CELL(WS-CHK-Y, WS-CHK-X) = 9
+                   MOVE WS-NEW-X TO WS-PX
+               END-IF
+           END-IF
+      *> Check Y movement
+           COMPUTE WS-CHK-X =
+               FUNCTION INTEGER-PART(WS-PX) + 1
+           COMPUTE WS-CHK-Y =
+               FUNCTION INTEGER-PART(WS-NEW-Y) + 1
+           IF WS-CHK-X >= 1 AND WS-CHK-X <= 16
+               AND WS-CHK-Y >= 1 AND WS-CHK-Y <= 16
+               IF WS-MAP-CELL(WS-CHK-Y, WS-CHK-X) = 0
+                   OR WS-MAP-CELL(WS-CHK-Y, WS-CHK-X) = 2
+                   OR WS-MAP-CELL(WS-CHK-Y, WS-CHK-X) = 9
+                   MOVE WS-NEW-Y TO WS-PY
+               END-IF
+           END-IF.
 
        TEST-INPUT.
            CALL "getchar" RETURNING WS-KEY-CODE
