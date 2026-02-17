@@ -17,7 +17,7 @@
        01 WS-ANSI-WHITE   PIC X(5).
        01 WS-ANSI-BYELLOW PIC X(5).
        01 WS-ANSI-BGREEN  PIC X(5).
-       01 WS-OUTPUT-LINE  PIC X(600).
+       01 WS-OUTPUT-LINE  PIC X(1200).
        01 WS-KEY-CHAR     PIC X.
        01 WS-KEY-CODE     PIC S9(4) COMP.
        01 WS-STTY-RAW     PIC X(20) VALUE "stty raw -echo".
@@ -126,6 +126,16 @@
        01 WS-SHADE-CHAR   PIC X.
        01 WS-WALL-COLOR   PIC 9.
 
+       01 WS-COLOR-BUF.
+          05 WS-COLOR-ROW OCCURS 40 TIMES.
+             10 WS-COLOR-CELL PIC 9 OCCURS 120 TIMES.
+      *> Color codes: 0=reset, 1=blue(ceiling), 2=white(wall close),
+      *> 3=gray(wall far), 4=yellow(floor), 5=red(enemy),
+      *> 6=green(HUD), 7=byellow(crosshair), 8=bgreen(exit)
+       01 WS-PREV-COLOR   PIC 9.
+       01 WS-OUT-POS      PIC 9(4).
+       01 WS-ANSI-CURSOR  PIC X(12).
+
        01 WS-MOVE-SPEED   PIC 9V9(4) VALUE 0.3000.
        01 WS-TURN-SPEED   PIC 9(2)   VALUE 10.
        01 WS-NEW-X        PIC S9(3)V9(4).
@@ -151,6 +161,7 @@
        GAME-LOOP.
            PERFORM CAST-ALL-RAYS
            PERFORM RENDER-FRAME
+           PERFORM RENDER-CROSSHAIR
            PERFORM DRAW-FRAME
            PERFORM READ-INPUT
            PERFORM PROCESS-INPUT.
@@ -482,6 +493,15 @@
                    MOVE "." TO WS-SHADE-CHAR
            END-EVALUATE
 
+      *> Determine wall color by distance and type
+           IF WS-HITC-VAL(WS-CUR-COL) = 9
+               MOVE 8 TO WS-WALL-COLOR
+           ELSE IF WS-DEPTH-VAL(WS-CUR-COL) < 5
+               MOVE 2 TO WS-WALL-COLOR
+           ELSE
+               MOVE 3 TO WS-WALL-COLOR
+           END-IF END-IF
+
       *> Fill this column row by row
            PERFORM VARYING WS-ROW FROM 1 BY 1
                UNTIL WS-ROW > WS-SCREEN-H
@@ -490,24 +510,98 @@
                    WHEN WS-ROW < WS-WALLT-VAL(WS-CUR-COL)
                        MOVE " " TO
                            WS-FRAME-CELL(WS-ROW, WS-CUR-COL)
+                       MOVE 1 TO
+                           WS-COLOR-CELL(WS-ROW, WS-CUR-COL)
       *> Wall
                    WHEN WS-ROW >= WS-WALLT-VAL(WS-CUR-COL)
                        AND WS-ROW <= WS-WALLB-VAL(WS-CUR-COL)
                        MOVE WS-SHADE-CHAR TO
                            WS-FRAME-CELL(WS-ROW, WS-CUR-COL)
+                       MOVE WS-WALL-COLOR TO
+                           WS-COLOR-CELL(WS-ROW, WS-CUR-COL)
       *> Floor
                    WHEN WS-ROW > WS-WALLB-VAL(WS-CUR-COL)
                        MOVE "," TO
                            WS-FRAME-CELL(WS-ROW, WS-CUR-COL)
+                       MOVE 4 TO
+                           WS-COLOR-CELL(WS-ROW, WS-CUR-COL)
                END-EVALUATE
            END-PERFORM.
+
+       RENDER-CROSSHAIR.
+           MOVE "+" TO WS-FRAME-CELL(20, 60)
+           MOVE 7  TO WS-COLOR-CELL(20, 60).
 
        DRAW-FRAME.
            DISPLAY WS-ANSI-HOME WITH NO ADVANCING
            PERFORM VARYING WS-ROW FROM 1 BY 1
                UNTIL WS-ROW > WS-SCREEN-H
-               DISPLAY WS-FRAME-ROW(WS-ROW)
+               PERFORM DRAW-ROW
            END-PERFORM.
+
+       DRAW-ROW.
+           MOVE SPACES TO WS-OUTPUT-LINE
+           MOVE 0 TO WS-PREV-COLOR
+           MOVE 1 TO WS-OUT-POS
+           PERFORM VARYING WS-CUR-COL FROM 1 BY 1
+               UNTIL WS-CUR-COL > WS-SCREEN-W
+      *> Insert color code if color changed
+               IF WS-COLOR-CELL(WS-ROW, WS-CUR-COL)
+                   NOT = WS-PREV-COLOR
+                   PERFORM INSERT-COLOR-CODE
+                   MOVE WS-COLOR-CELL(WS-ROW, WS-CUR-COL)
+                       TO WS-PREV-COLOR
+               END-IF
+      *> Insert character
+               MOVE WS-FRAME-CELL(WS-ROW, WS-CUR-COL)
+                   TO WS-OUTPUT-LINE(WS-OUT-POS:1)
+               ADD 1 TO WS-OUT-POS
+           END-PERFORM
+      *> Reset color at end of row
+           MOVE WS-ANSI-RESET TO
+               WS-OUTPUT-LINE(WS-OUT-POS:4)
+           ADD 3 TO WS-OUT-POS
+           DISPLAY WS-OUTPUT-LINE(1:WS-OUT-POS).
+
+       INSERT-COLOR-CODE.
+           EVALUATE WS-COLOR-CELL(WS-ROW, WS-CUR-COL)
+               WHEN 1
+                   MOVE WS-ANSI-BLUE TO
+                       WS-OUTPUT-LINE(WS-OUT-POS:5)
+                   ADD 5 TO WS-OUT-POS
+               WHEN 2
+                   MOVE WS-ANSI-WHITE TO
+                       WS-OUTPUT-LINE(WS-OUT-POS:5)
+                   ADD 5 TO WS-OUT-POS
+               WHEN 3
+                   MOVE WS-ANSI-GRAY TO
+                       WS-OUTPUT-LINE(WS-OUT-POS:5)
+                   ADD 5 TO WS-OUT-POS
+               WHEN 4
+                   MOVE WS-ANSI-YELLOW TO
+                       WS-OUTPUT-LINE(WS-OUT-POS:5)
+                   ADD 5 TO WS-OUT-POS
+               WHEN 5
+                   MOVE WS-ANSI-RED TO
+                       WS-OUTPUT-LINE(WS-OUT-POS:5)
+                   ADD 5 TO WS-OUT-POS
+               WHEN 6
+                   MOVE WS-ANSI-GREEN TO
+                       WS-OUTPUT-LINE(WS-OUT-POS:5)
+                   ADD 5 TO WS-OUT-POS
+               WHEN 7
+                   MOVE WS-ANSI-BYELLOW TO
+                       WS-OUTPUT-LINE(WS-OUT-POS:5)
+                   ADD 5 TO WS-OUT-POS
+               WHEN 8
+                   MOVE WS-ANSI-BGREEN TO
+                       WS-OUTPUT-LINE(WS-OUT-POS:5)
+                   ADD 5 TO WS-OUT-POS
+               WHEN 0
+                   MOVE WS-ANSI-RESET TO
+                       WS-OUTPUT-LINE(WS-OUT-POS:4)
+                   ADD 4 TO WS-OUT-POS
+           END-EVALUATE.
 
        DEBUG-MAP.
            PERFORM VARYING WS-I FROM 1 BY 1
