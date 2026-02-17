@@ -1,11 +1,13 @@
-/* display.c — SDL2 display driver for COBOL Doom 2 */
-/* ~60 lines. No game logic. No rendering. Just show pixels. */
+/* display.c — SDL2 display + WAD file I/O for COBOL Doom 2 */
+/* ~70 lines C. No game logic. Just show pixels + read files. */
 
 #include <SDL2/SDL.h>
+#include <stdio.h>
 
 static SDL_Window*   win;
 static SDL_Renderer* ren;
 static SDL_Texture*  tex;
+static FILE*         wad_fp;
 
 void sdl_init(int *w, int *h) {
     SDL_Init(SDL_INIT_VIDEO);
@@ -49,4 +51,21 @@ void sdl_quit(void) {
     if (ren) SDL_DestroyRenderer(ren);
     if (win) SDL_DestroyWindow(win);
     SDL_Quit();
+}
+
+/* --- WAD file I/O --- */
+
+int wad_open(char *filename) {
+    wad_fp = fopen(filename, "rb");
+    return wad_fp ? 0 : -1;
+}
+
+void wad_read(int *offset, int *size, unsigned char *buf) {
+    if (!wad_fp) return;
+    fseek(wad_fp, *offset, SEEK_SET);
+    fread(buf, 1, *size, wad_fp);
+}
+
+void wad_close(void) {
+    if (wad_fp) { fclose(wad_fp); wad_fp = NULL; }
 }
