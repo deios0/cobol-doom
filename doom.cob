@@ -18,15 +18,35 @@
        01 WS-ANSI-BYELLOW PIC X(5).
        01 WS-ANSI-BGREEN  PIC X(5).
        01 WS-OUTPUT-LINE  PIC X(600).
+       01 WS-KEY-CHAR     PIC X.
+       01 WS-KEY-CODE     PIC S9(4) COMP.
+       01 WS-STTY-RAW     PIC X(20) VALUE "stty raw -echo".
+       01 WS-STTY-SANE    PIC X(10) VALUE "stty sane".
 
        PROCEDURE DIVISION.
        MAIN-PROGRAM.
            PERFORM INIT-ANSI
            DISPLAY WS-ANSI-CLEAR
-           DISPLAY WS-ANSI-RED "RED TEXT" WS-ANSI-RESET
-           DISPLAY WS-ANSI-GREEN "GREEN TEXT" WS-ANSI-RESET
-           DISPLAY WS-ANSI-BLUE "BLUE TEXT" WS-ANSI-RESET
-           DISPLAY WS-ANSI-YELLOW "YELLOW TEXT" WS-ANSI-RESET
+           CALL "SYSTEM" USING WS-STTY-RAW
+           DISPLAY "Press keys (q to quit):"
+           MOVE SPACE TO WS-KEY-CHAR
+           PERFORM TEST-INPUT UNTIL WS-KEY-CHAR = "q"
+           PERFORM SAFE-EXIT.
+
+       TEST-INPUT.
+           CALL "getchar" RETURNING WS-KEY-CODE
+           IF WS-KEY-CODE = -1
+               MOVE "q" TO WS-KEY-CHAR
+           ELSE
+               MOVE FUNCTION CHAR(WS-KEY-CODE + 1)
+                   TO WS-KEY-CHAR
+           END-IF
+           DISPLAY "Key: " WS-KEY-CHAR.
+
+       SAFE-EXIT.
+           CALL "SYSTEM" USING WS-STTY-SANE
+           DISPLAY " "
+           DISPLAY "Terminal restored. Done."
            STOP RUN.
 
        INIT-ANSI.
