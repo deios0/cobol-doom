@@ -1,0 +1,20 @@
+# Compiled COBOL binaries
+doom
+*.o
+*.so
+*.dll
+
+# GnuCOBOL intermediate files
+*.c.l[0-9]*
+*.i
+
+# Editor files
+*~
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
