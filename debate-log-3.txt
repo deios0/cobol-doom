@@ -1,0 +1,657 @@
+No API key found for provider 'anthropic'. Set the ANTHROPIC_API_KEY environment variable, add it to /home/ubuntu/bridge/.bridge.yaml, or create a key file at /home/ubuntu/.bridge/keys/anthropic.key
+
+================================================================================
+ROUND 1
+================================================================================
+
+--- [GEMINI] ---
+Alright, let's cut to the chase. You want Doom 2 visuals from COBOL, and you're not messing around with the 95% rule. The current state is a glorified text editor displaying a game. That won't fly for Doom 2.
+
+Here's my initial assessment and a hard argument for Round 1:
+
+---
+
+### Round 1: The Terminal vs. The Pixel
+
+**The Unacceptable Compromise: Approach 1 (Unicode Half-blocks + 24-bit ANSI Truecolor)**
+
+*   **COBOL vs External:** 100% COBOL. No question there.
+*   **Visual Result:** A significant *improvement* over your current state, yes. You could achieve a sort of "blocky pixel art" feel, especially with a high character resolution. Think early-90s DOS shareware or a very chunky Minecraft interpretation. You'd get pseudo-textures by careful selection of character (e.g., U+2580 '▀' for upper half-block, U+2584 '▄' for lower) and truecolors.
+*   **Achievability:** High. COBOL's string manipulation for ANSI escape sequences is robust. The logic for mapping texture data to character/color pairs is complex but entirely within COBOL's capabilities.
+*   **Risks:**
+    *   **Visual Fidelity: CRITICAL FAILURE.** This *will not* look like Doom 2. Doom 2 relies on true pixel art, detailed sprites, and complex texture blending. You cannot replicate this level of detail with character cells, even half-blocks. Sprites would look utterly terrible, blocky, and completely lose their character. The resolution is fundamentally limited by the character grid. The prompt explicitly says "recognizably Doom 2, not a generic ASCII raycaster." This is just a *fancy* generic ASCII raycaster. It fails the core visual requirement.
+    *   **Performance:** Generating vast strings of ANSI escape codes and Unicode characters per frame could bog down terminal rendering, depending on output buffer sizes and the terminal emulator's efficiency.
+
+**The Underestimated Dark Horse (and my strong recommendation): Approach 2 (COBOL generating Sixel/Kitty image protocol escape sequences)**
+
+*   **COBOL vs External:** This is where it shines.
+    *   **Sixel:** Realistically, **>98% COBOL**. The raycasting engine generates a raw pixel buffer (e.g., `PIC X(3)` array for RGB). GnuCOBOL's strong string, byte, and arithmetic capabilities (including bit operations if needed) are perfectly capable of implementing the Sixel encoding logic *entirely in COBOL*. Sixel is a relatively straightforward run-length encoded byte stream. Implementing the transformation of a pixel buffer into Sixel escape sequences is a challenging but *purely COBOL-doable* task. No external C shim is inherently required for Sixel.
+    *   **Kitty:** Closer to **>95% COBOL**. For Kitty, while the raycasting and pixel buffer generation remain 100% COBOL, embedding pre-encoded PNG/JPEG data (which Kitty often supports for better compression/quality) would almost certainly necessitate a tiny C shim for image encoding (e.g., `libpng` or `libjpeg`) and Base64 encoding. This shim would be extremely minimal, perhaps 50-100 lines of C at most, purely for the final encoding step.
+*   **Visual Result:** **IDENTICAL TO ORIGINAL DOOM 2.** This is the undisputed winner for visual fidelity while remaining within the "terminal output" paradigm. Sixel and Kitty protocols enable *true pixel graphics* at arbitrary resolutions (limited only by the terminal window size). You get pixel-perfect textures, sprites, UI elements – everything needed to make it look exactly like Doom 2.
+*   **Achievability:** High for visual quality; moderate for COBOL implementation complexity. The COBOL raycaster needs to generate a pixel buffer. The challenge lies in the COBOL-native implementation of Sixel encoding. It requires careful byte manipulation and RLE logic, but GnuCOBOL is up to the task.
+*   **Risks:**
+    *   **Performance:** Generating potentially large Sixel/Kitty escape sequences (especially Base64 encoded images for Kitty) and pushing them to `stdout` at 30+ FPS will demand highly optimized COBOL code. String concatenation and byte array processing need to be efficient.
+    *   **Terminal Compatibility:** Requires a Sixel or Kitty-compatible terminal. While many modern terminals support Sixel (xterm, mlterm, foot, wezterm, kitty), it's not universal like basic ANSI. Kitty protocol is specific to Kitty terminal but gaining traction.
+    *   **COBOL Encoding Effort:** Implementing Sixel encoding natively in COBOL will be a non-trivial development effort, requiring deep understanding of the Sixel format.
+
+**Why Sixel/Kitty Trumps The Others (for Round 1):**
+
+*   **Purity:** Sixel, in particular, offers the best chance for **100% COBOL** rendering *to pixel graphics* by making COBOL responsible for the entire pipeline, including the final image serialization. This maximally respects the >95% COBOL rule.
+*   **Context:** It keeps the game running *within the terminal*, which aligns with the current working state and the spirit of "pushing boundaries of old tech" in a terminal environment, rather than breaking out into a separate GUI window.
+*   **Fidelity:** It is the *only terminal-based solution* that delivers actual Doom 2 visual fidelity. Approach 1 simply cannot compete here.
+
+**Critique of Approaches 3 & 4 (SDL2 / Raw Framebuffer):**
+
+*   While these offer superior visual quality (matching original Doom 2), the argument about "95% COBOL of the *total codebase*" gets weaker.
+    *   **SDL2:** Even with a "minimal C shim," you are implicitly relying on the *entire massive codebase of SDL2 and its underlying graphics drivers*. While the *interface* code is small, the *total executable code* doing the rendering includes vast amounts of C/assembly. This feels like an elegant way to technically meet the >95% *your code* rule, but it arguably violates the spirit of "total codebase."
+    *   **Raw Framebuffer:** Similar to SDL2, you need an external viewer. This viewer, no matter how simple, still uses a graphics library (SDL2, OpenGL, etc.) whose codebase is substantial. It's just offloaded to a separate process. Event handling for input also complicates the "tiny viewer" part, pushing its functionality beyond simple display.
+
+**Conclusion for Round 1:**
+
+**Approach 2 (Sixel/Kitty)**, specifically focusing on **Sixel** for its potential for 100% COBOL implementation, is the **only viable path** to achieve true Doom 2 visuals while rigorously adhering to the >95% COBOL codebase requirement and keeping the experience rooted in the terminal. Approach 1 is a non-starter for the visual target. Approaches 3 and 4, while visually effective, sidestep the "total codebase" spirit by leveraging large external rendering frameworks. The challenge for Sixel lies in the COBOL implementation of its encoding, but GnuCOBOL has the tools. We *must* prove COBOL can encode Sixel.
+[tokens: 5404, 26.4s]
+
+--- [OPENAI] ---
+### Approach 1: Textured Raycasting with Unicode Half-Blocks and 24-bit ANSI Truecolor
+
+- **COBOL Contribution**: 100% COBOL
+- **Visual Result**: Improved texture detail using Unicode half-block characters (▀, ▄) and enhanced color fidelity with 24-bit ANSI colors.
+- **Achievability**: Challenging to implement complex texture mapping purely in COBOL, but feasible with clever use of string manipulation for texture blending.
+- **Risks**: Limited by terminal rendering speed and potential color inaccuracies. Performance might degrade with intricate textures.
+
+### Approach 2: Sixel/Kitty Image Protocol Escape Sequences
+
+- **COBOL Contribution**: 100% COBOL for generating sequences
+- **Visual Result**: Near pixel-perfect representation if terminal supports Sixel/Kitty protocols.
+- **Achievability**: Highly dependent on terminal capabilities; excellent if supported, but fallback needed for unsupported terminals.
+- **Risks**: Compatibility issues across different terminal emulators; requires deep knowledge of escape sequence generation.
+
+### Approach 3: Calling SDL2 via FFI with Minimal C Shim
+
+- **COBOL Contribution**: 95% COBOL, <5% C for FFI and SDL2 setup
+- **Visual Result**: True Doom 2-like visuals as SDL2 can handle full graphical rendering.
+- **Achievability**: Most visually accurate, leveraging SDL2's robust rendering capabilities.
+- **Risks**: Maintaining the 95% COBOL constraint; potential complexity in FFI setup and debugging.
+
+### Approach 4: Raw Framebuffer Generation and Piping to Viewer
+
+- **COBOL Contribution**: 99% COBOL for framebuffer creation
+- **Visual Result**: High-quality visuals if viewer can interpret framebuffer correctly.
+- **Achievability**: Simplifies rendering in COBOL, offloading to a viewer, but viewer must be highly optimized.
+- **Risks**: Synchronization between COBOL output and viewer processing; viewer compatibility and performance.
+
+### Other Creative Approaches
+
+- **Approach 5: ASCII Art with Advanced Shading Techniques**
+  - **COBOL Contribution**: 100%
+  - **Visual Result**: Enhanced ASCII art using shading techniques to mimic depth and textures.
+  - **Achievability**: Easier to implement but less visually impressive; relies heavily on artistic ASCII design.
+  - **Risks**: Limited visual fidelity; difficulty in achieving Doom 2's complexity.
+
+- **Approach 6: Use of COBOL as a Preprocessor for External Scripts**
+  - **COBOL Contribution**: >95% COBOL for preprocessing
+  - **Visual Result**: Depends on the external script's capabilities; potentially high-quality.
+  - **Achievability**: Flexible approach but might blur lines of the >95% requirement.
+  - **Risks**: Risk of external processing overshadowing COBOL's role.
+
+### Conclusion
+
+- **Recommendation**: Explore Approach 3 for its balance between visual fidelity and practicality, ensuring the C shim remains minimal.
+- **Further Exploration**: Validate terminal compatibility for Approach 2, as it offers full COBOL compliance with potentially excellent results.
+- **Next Steps**: Prototype small sections with each approach to assess feasibility and refine the chosen solution.
+[tokens: 1111, 17.0s]
+
+================================================================================
+ROUND 2
+================================================================================
+
+--- [GEMINI] ---
+Alright, let's cut through the noise. `openai`'s analysis is a good starting point but lacks the ruthless precision required for such a specific, boundary-pushing challenge. My expertise tells me we need to be far more discerning about what truly delivers "Doom 2-quality visuals" while adhering to the ironclad COBOL constraint.
+
+Here’s my critique and proposed solutions for Round 1:
+
+---
+
+### Critique of `openai`'s Positions & My Counter-Arguments
+
+1.  **Approach 1 & 5 (Textured Raycasting with Unicode Half-Blocks / Advanced ASCII):**
+    *   `openai` claims "Improved texture detail" and "Enhanced ASCII art using shading techniques."
+    *   **My Critique:** This is fundamentally wrong for "Doom 2-quality visuals." Doom 2 is a *pixel-art game* rendered at resolutions like 320x200. Unicode half-blocks, even with 24-bit ANSI, still operate within a character grid (e.g., 120x80 effective resolution). You *cannot* represent the fine detail, sprites, varying light levels, and parallax of Doom 2 textures and enemies using character blocks. It will *always* look like an advanced ASCII raycaster, not a pixel-art game. This approach is a dead end for the visual fidelity requirement. Dismiss it immediately.
+
+2.  **Approach 4 (Raw Framebuffer Generation and Piping to Viewer):**
+    *   `openai` suggests "High-quality visuals if viewer can interpret framebuffer correctly" and "simplifies rendering in COBOL."
+    *   **My Critique:** This is essentially a less efficient, more complex variant of the SDL2 FFI approach. Instead of direct memory access via FFI, you're introducing inter-process communication (IPC) overhead, buffering, and synchronization challenges. It doesn't "simplify rendering in COBOL" – COBOL still has to generate the exact same raw pixel data. The "viewer" is just the C shim from Approach 3, but now burdened with an IPC layer. This adds unnecessary complexity and potential performance bottlenecks. FFI is superior for this specific task.
+
+3.  **Approach 6 (COBOL as a Preprocessor for External Scripts):**
+    *   `openai` notes "Potentially high-quality" visuals but risks the ">95% requirement."
+    *   **My Critique:** This directly violates the "minimal C/Python helper code... not a renderer" constraint. If COBOL is merely assembling data for an external script that *is* the renderer, then the external script is doing the core visual heavy lifting, not acting as a "shim." This is a loophole approach that undermines the spirit of the challenge.
+
+### My Strongest Contenders for "Doom 2-Quality Visuals"
+
+Given the constraints, only two approaches realistically deliver pixel-based graphics and maintain the >95% COBOL rule:
+
+1.  **Sixel/Kitty Image Protocol (100% COBOL, Terminal as Renderer)**
+    *   **COBOL Contribution:** 100%
+    *   **Visual Result:** **Near pixel-perfect representation.** Sixel and Kitty graphics protocols allow direct pixel rendering within the terminal. This is the *only* purely COBOL approach that can achieve true pixel-art visuals. Doom 2's distinct textures, sprites, and lighting can be accurately represented.
+    *   **Achievability:** **Highly ambitious but feasible.** COBOL would generate raw pixel data (a large `PIC X` array, e.g., 320x200 pixels * 4 bytes/pixel for RGBA). The critical part is then encoding this raw data into the respective terminal protocol.
+        *   **Sixel:** Involves run-length encoding (RLE) and complex escape sequences. Implementing a full RLE encoder purely in COBOL is a significant string manipulation challenge but absolutely possible with GnuCOBOL's string functions and byte manipulation capabilities.
+        *   **Kitty Graphics Protocol:** Can transmit raw uncompressed pixel data (`display_mode=1`). This is *much simpler* to implement in COBOL: build a command string with width, height, and display mode parameters, then append the raw pixel data directly. No complex encoding needed, just string concatenation and binary output.
+    *   **Risks:**
+        *   **Complexity of Encoding (Sixel) / String Generation (Kitty):** Even Kitty's raw mode requires precise string formatting and binary handling in COBOL. This will be many lines of intricate COBOL code.
+        *   **Performance:** Generating potentially hundreds of kilobytes of escape sequences per frame and piping them to `stdout` could be a bottleneck. The terminal emulator's parsing and rendering speed is also a factor.
+        *   **Terminal Support:** Requires a Kitty-compatible terminal (Kitty, WezTerm) or Sixel-compatible (xterm -sixel, mlterm, mintty, etc.). This is a known dependency, not a failure of the approach.
+
+2.  **SDL2 via FFI (COBOL Pixel Generator, Minimal C Shim)**
+    *   **COBOL Contribution:** ~95% COBOL, <5% C shim.
+    *   **Visual Result:** **True Doom 2-quality visuals.** SDL2 is designed for this. It handles windowing, rendering, and input efficiently.
+    *   **Achievability:** **High.** This is the most practical and robust path to guaranteed fidelity. The COBOL engine (DDA, trig tables, texture lookups, light calculations, sprite rendering) populates a raw pixel buffer (e.g., a `PIC X` array). The C shim's role is strictly:
+        1.  `main()` function.
+        2.  Initialize SDL, create window/renderer/texture.
+        3.  Loop: Call COBOL's main frame rendering routine, passing it a pointer to the pixel buffer.
+        4.  `SDL_UpdateTexture()` with the COBOL-generated buffer.
+        5.  `SDL_RenderCopy()`, `SDL_RenderPresent()`.
+        6.  Handle input events (keyboard/mouse) and pass them back to COBOL if needed, or simply set flags COBOL polls.
+        This shim can easily be kept under 5% of the total codebase lines, especially if the COBOL engine is already ~1000 lines and expanding with texture/sprite logic.
+    *   **Risks:**
+        *   **C Shim Scope Creep:** The critical risk is ensuring the C shim remains *strictly* glue code and doesn't evolve into a renderer itself. All raycasting, texture mapping, sprite handling, and game logic *must* reside in COBOL.
+        *   **FFI Debugging:** Interfacing COBOL and C can introduce tricky debugging challenges if memory addresses or data types are mismatched. GnuCOBOL's `BY REFERENCE` and `BY VALUE` handles this well.
+
+### Conclusion for Round 1:
+
+**My primary recommendation for achieving *guaranteed* Doom 2 visual fidelity with maximal COBOL contribution is Approach 2 (SDL2 via FFI).** It's robust, performant, and the C shim can be tightly controlled to be minimal.
+
+**However, Approach 1 (Kitty/Sixel Protocols, especially Kitty's raw pixel mode) offers the purist's path for 100% COBOL pixel graphics.** If the performance and encoding complexity can be managed within COBOL, this is an incredibly elegant and impressive solution. We need to explore the feasibility of COBOL-side Kitty raw pixel generation rigorously.
+
+**Dismissed approaches (1, 4, 5, 6 from `openai`) simply do not meet the "Doom 2-quality visuals" or "minimal shim" requirements.** We are pushing for pixel graphics, not enhanced text mode.
+[tokens: 6255, 26.3s]
+
+--- [OPENAI] ---
+**Round 2: Further Exploration and Counter-Arguments**
+
+### Reassessing Approach 1 (Unicode Half-blocks + 24-bit ANSI Truecolor)
+
+**Counter-Argument:**
+
+- **Visual Fidelity Potential:** While initially dismissed, this approach deserves a second look. By strategically using half-blocks and truecolor, you can create a surprisingly rich visual experience. With a higher terminal resolution, detail can be enhanced, though still far from perfect.
+- **Performance and Compatibility:** This solution is efficient and universally compatible with any ANSI terminal supporting truecolor. No concerns about specific terminal requirements.
+- **Achievability and Development Time:** Rapid implementation with existing COBOL capabilities, allowing for a quick turnaround and iterative improvements.
+
+### Reevaluation of Approach 2 (COBOL Generating Sixel/Kitty)
+
+**Counter-Argument:**
+
+- **COBOL Complexity:** Implementing Sixel encoding within COBOL, while technically feasible, is a daunting task. The complexity of byte manipulation and encoding could lead to a significant development overhead, diverting focus from game enhancements.
+- **Terminal Support:** Although many terminals support Sixel, it's not universally available, limiting the audience. Kitty protocol is even more niche.
+- **Performance Concerns:** The potential bottleneck of generating and handling large escape sequences may severely impact performance, especially in real-time applications like games.
+
+### Reconsideration of Approach 3 (COBOL Calling SDL2 via FFI)
+
+**Counter-Argument:**
+
+- **Codebase Integrity:** By strictly keeping the rendering logic in COBOL and using SDL2 only for display, the spirit of the 95% rule is maintained. The minimal C shim for SDL2 could be as small as 50 lines, focusing solely on initialization and buffer display.
+- **Visual Fidelity:** Offers the best visual result, matching Doom 2 precisely, with full sprite support and detailed textures.
+- **Performance:** SDL2 provides hardware-accelerated graphics, ensuring smooth performance, a critical factor for an action game like Doom 2.
+
+### New Approach 5: COBOL Generating Raw ASCII Art with Dynamic Color Shading
+
+**Proposal:**
+
+- **COBOL vs External:** 100% COBOL. Use ASCII art enhanced with ANSI color codes to create dynamic shading, simulating texture depth.
+- **Visual Result:** While not true pixel graphics, clever use of ASCII art can provide a visually engaging experience that evokes classic DOS-era games.
+- **Achievability:** High, leveraging existing COBOL string manipulation capabilities.
+- **Risks:** Limited by ASCII resolution and color depth. May fail to capture the true essence of Doom 2.
+
+### Conclusion for Round 2:
+
+**Approach 3 (SDL2 FFI)** emerges as a strong contender for achieving true Doom 2 visuals while respecting the >95% COBOL guideline. The minimal C shim does not undermine the COBOL majority and offers unparalleled graphical fidelity. While Approach 2 (Sixel/Kitty) has its merits, its complexity and terminal dependency pose significant challenges. Approach 1 remains viable for rapid deployment but falls short on fidelity. Approach 5 introduces a novel angle but lacks the detail required for Doom 2's graphical demands. Further debate and exploration in subsequent rounds are crucial to refine these positions.
+[tokens: 2672, 20.4s]
+
+================================================================================
+ROUND 3
+================================================================================
+
+--- [GEMINI] ---
+As a creative systems architect deeply rooted in COBOL and pushing old tech, let's cut through the noise. The core challenge is pixel fidelity for "recognizably Doom 2" visuals while maintaining >95% COBOL.
+
+Here's my critical analysis and refined positions for Round 2:
+
+*   **Approach 1 (Unicode Half-blocks + 24-bit ANSI Truecolor): Absolute Dismissal.**
+    *   **Visual Result:** This fails the "recognizably Doom 2" hard requirement completely. While "surprisingly rich" for a terminal raycaster, it is fundamentally character-based, not pixel-based. It cannot render textured walls, detailed sprites, or the subtle lighting gradients of Doom 2. It's a glorified `ncurses` game, not Doom.
+    *   **Achievability/Risk:** Highly achievable, but risks wasting effort on a solution that cannot meet the visual brief. This is a non-starter.
+
+*   **Approach 2 (COBOL Generating Sixel/Kitty Image Protocol): Strongest Contender for Pure COBOL.**
+    *   **COBOL Complexity (Counter-Argument to openai):** The claim of "daunting complexity" for Sixel/Kitty encoding within COBOL is a weak one. This is *precisely* the kind of low-level byte manipulation and string concatenation that COBOL excels at. `PIC X` data items, `STRING`, `UNSTRING`, and `COMPUTE` (even with a *tiny*, well-under-5% C shim for pure bitwise operations if `COMPUTE` alone proves insufficient) are perfectly capable of constructing complex escape sequences. A skilled COBOL developer will find this a fascinating challenge, not a "daunting overhead."
+    *   **Visual Result:** This approach *can* deliver recognizably Doom 2 visuals. Sixel and Kitty protocols enable *actual pixel graphics* in the terminal. COBOL performs all rendering logic (raycasting, texture mapping, sprite drawing, lighting, depth-buffering) into a raw pixel buffer (e.g., `PIC X(WIDTH * HEIGHT * 4)` for RGBA), then encodes that buffer into the relevant escape sequences for the terminal.
+    *   **Performance:** This is the primary risk. Transmitting large quantities of encoded pixel data to the terminal can be a bottleneck. However, a minimal C shim (well under 5%) purely for `fflush(stdout)` could mitigate buffering issues if GnuCOBOL's `DISPLAY` proves too slow for flushing. Given Doom 2's original resolution (e.g., ~320x200), an effective terminal resolution of 720x240 (for 120x40 character cells with Sixel's 6 vertical pixels) is achievable and manageable for raw pixel updates.
+    *   **Achievability:** High for a determined COBOL architect. This keeps nearly 100% of the display logic in COBOL.
+
+*   **Approach 3 (COBOL Calling SDL2 via FFI with a Minimal C Shim): Strongest Contender for Fidelity, with Strict Interpretation.**
+    *   **Codebase Integrity (CRITICAL DISTINCTION):** This approach only works if we define "minimal C shim" *extremely strictly*.
+        *   **Correct (COBOL >95%):** COBOL is responsible for *every single pixel calculation*. The COBOL raycaster determines the color of *each pixel* on the screen, performing all texture lookups (from WADs parsed by COBOL), perspective correction, depth buffering, lighting calculations, and sprite blending. COBOL writes this raw pixel data into a `PIC X` buffer. The C shim (<5% total codebase) is *solely* for: `SDL_Init`, `SDL_CreateWindow`, `SDL_CreateRenderer`, `SDL_CreateTexture` (e.g., `SDL_PIXELFORMAT_ARGB8888`), `SDL_UpdateTexture` (passing the COBOL-managed pixel buffer *pointer* directly), `SDL_RenderCopy`, `SDL_RenderPresent`, and basic event polling (passing key codes back to COBOL).
+        *   **Incorrect (Violates >95%):** If COBOL calls the C shim with commands like `draw_textured_wall(texture_id, x1, y1, x2, y2)` or `draw_sprite(sprite_id, x, y)`, the *actual rendering logic* has shifted to C, violating the >95% COBOL rule.
+    *   **Visual Result:** Unparalleled visual fidelity. This guarantees *actual* Doom 2 visuals, with full texture mapping, proper sprite scaling, and lighting, rendered with hardware acceleration.
+    *   **Risk:** Architectural discipline. The C shim must remain a dumb output buffer presenter and input passer, never performing any game rendering logic.
+
+*   **Approach 5 (COBOL Generating Raw ASCII Art with Dynamic Color Shading): Dismissal.**
+    *   **Visual Result:** This is simply a slightly more advanced version of Approach 1, and suffers the same fundamental flaw: it's character-based, not pixel-based. It cannot achieve "recognizably Doom 2" visuals.
+
+*   **NEW CRITICAL CONSIDERATION: COBOL WAD File Parsing.**
+    *   To get "Doom 2 visuals," we *must* use Doom 2's actual assets: textures, flats, sprites, palettes.
+    *   **COBOL's Role:** This is where COBOL can brilliantly shine, maintaining the >95% rule. COBOL is perfectly capable of binary file I/O and complex data structure parsing. `READ` statements, `REDEFINES` clauses, `COMPUTE` for byte offsets, and basic arithmetic can extract all necessary graphical (and map) data from Doom WAD files (texture data, palette, colormaps, sprite frames). This ensures the *source material* for the visuals is handled entirely within COBOL.
+    *   **Impact:** This underpins both Approach 2 (Sixel/Kitty) and Approach 3 (SDL2) by providing the raw texture and sprite data for COBOL's rendering engine to manipulate. This strengthens the argument for COBOL doing the heavy lifting for *all* visual aspects, from asset loading to pixel calculation.
+
+**Conclusion for Round 2:**
+
+**Approach 2 (Sixel/Kitty) and Approach 3 (SDL2 with strict interpretation) are the only viable paths to "recognizably Doom 2" visuals.** Approach 2 is ideal for the purist aiming for nearly 100% COBOL within the terminal, with Sixel/Kitty providing the pixel-level escape sequences. Approach 3 offers superior performance and fidelity but demands rigorous architectural discipline to keep the C shim minimal and avoid rendering logic creep. The ability of COBOL to parse WAD files is a critical piece that solidifies both these approaches.
+[tokens: 5830, 23.1s]
+
+--- [OPENAI] ---
+Let's dive into the nitty-gritty of each approach and ensure we stay pragmatic and focused on what aligns with the hard requirement of >95% COBOL code:
+
+### Analysis of Approaches:
+
+1. **Textured Raycasting with Unicode Half-Blocks + 24-bit ANSI:**
+   - **COBOL Contribution:** 100%
+   - **Visual Result:** Still character-based, limited detail.
+   - **Critique:** This approach is fundamentally constrained by the character grid, making it impossible to achieve true pixel-level detail. It's an improvement aesthetically over basic ASCII, but not sufficient for Doom 2's pixel art fidelity. Not viable for high-detail textures and sprites.
+
+2. **COBOL Generating Sixel/Kitty Image Protocol:**
+   - **COBOL Contribution:** 100%
+   - **Visual Result:** Potential for near pixel-perfect representation.
+   - **Critique:** This approach maximizes COBOL usage and can deliver high fidelity. Key challenges include:
+     - **Complex Encoding:** Implementing Sixel's RLE or Kitty's protocol in COBOL is non-trivial and requires efficient string manipulation and binary data handling.
+     - **Performance:** High data throughput and terminal parsing speed are concerns. Limited by terminal capabilities and specific emulator support.
+   - **Feasibility:** Ambitious but achievable if terminal dependency is manageable.
+
+3. **SDL2 via FFI with a Minimal C Shim:**
+   - **COBOL Contribution:** ~95%
+   - **Visual Result:** True Doom 2-quality visuals, leveraging SDL2's rendering capabilities.
+   - **Critique:** This approach is practical and ensures high visual fidelity with a controlled C shim.
+     - **C Shim Scope:** Must strictly adhere to the role of window management and texture updates, avoiding any rendering logic creep.
+     - **FFI Complexity:** Debugging FFI can be challenging but manageable with careful data handling.
+   - **Feasibility:** High, with clear boundaries for C code maintaining the focus on COBOL for all game logic and rendering setup.
+
+4. **COBOL Generating Raw Framebuffer and Piping to Viewer:**
+   - **COBOL Contribution:** High, but indirect reliance on viewer.
+   - **Visual Result:** Depends on viewer capabilities, introduces IPC overhead.
+   - **Critique:** Adds unnecessary complexity and performance issues compared to SDL2 FFI. The viewer essentially acts as a renderer, which is against the minimal external code requirement.
+   - **Dismissed:** Inferior to SDL2 FFI due to added IPC complexity.
+
+### Conclusion for Round 1:
+
+- **Primary Recommendation:** SDL2 via FFI is the most pragmatic and effective approach for achieving Doom 2 visuals while maintaining the COBOL-heavy codebase. It provides a clear path to high fidelity with manageable complexity.
+  
+- **Secondary Exploration:** Investigate the feasibility of Kitty/Sixel protocols for a pure COBOL solution. This is a secondary track and should be explored for its elegance and challenge, not immediate practicality.
+
+Let's explore how these approaches can be refined further, focusing on debugging, performance optimization, and specific terminal support strategies in subsequent rounds.
+[tokens: 2742, 27.7s]
+
+================================================================================
+ROUND 4
+================================================================================
+
+--- [GEMINI] ---
+Alright, let's cut through the noise and get to the core of this. As a creative systems architect who loves pushing old tech, I see a clear path here, but it requires precise execution and a deep understanding of COBOL's capabilities. openai's analysis is a good starting point, but it lacks the necessary punch, detail, and sometimes dismisses potential too quickly.
+
+Here's my critique and refined strategy for achieving Doom 2-quality visuals, strictly adhering to the >95% COBOL mandate:
+
+---
+
+### Critique of OpenAI's Positions & My Refined Approach
+
+1.  **Textured Raycasting with Unicode Half-Blocks + 24-bit ANSI:**
+    *   **openai's Position:** "Fundamentally constrained... impossible to achieve true pixel-level detail... Not viable for high-detail textures and sprites."
+    *   **My Critique:** While openai is *ultimately correct* that this won't achieve "true pixel-level detail" for "real Doom 2," its dismissal is too swift without exploring the *absolute maximum* this approach could yield. You *could* get "recognizably Doom 2" *aesthetic* if the terminal resolution was extremely high (e.g., 200x80 characters using half-blocks for 200x160 "sub-pixel" resolution) and you implemented sophisticated dithered texture mapping and careful sprite ASCII conversion. However, for "LOOKS like real Doom 2" (implying pixel-accurate fidelity and smooth texture mapping), this is insufficient. The character grid is an insurmountable obstacle for *true* pixel art reproduction.
+    *   **Verdict:** **Dismissed for the "real Doom 2" visual requirement.** It's a fantastic challenge for pure character-based rendering, but it cannot meet the fidelity bar specified. COBOL contribution would be 100%, but the visual outcome would be a highly stylized interpretation, not a replication.
+
+2.  **COBOL Generating Sixel/Kitty Image Protocol Escape Sequences (Pixel Graphics in Terminal):**
+    *   **openai's Position:** "Potential for near pixel-perfect representation... Complex Encoding... Performance... Ambitious but achievable."
+    *   **My Critique:** openai correctly identifies this as the "pure COBOL pixel graphics" dream. This is a **HIGH-POTENTIAL** approach for achieving *true* pixel fidelity *without any external C rendering library*. The challenges are indeed complex encoding and potential terminal performance. However, these are COBOL implementation challenges, not fundamental limitations.
+    *   **COBOL Contribution:** 100%. COBOL generates the raw framebuffer (`PIC X(WIDTH * HEIGHT * 4)` for RGBA data) and then orchestrates the complex string manipulation to build the Sixel or Kitty image escape sequences. GnuCOBOL's `STRING` and `UNSTRING` verbs, along with `DISPLAY` for output, are perfectly capable. Kitty's graphics protocol, in particular, is designed for efficiency and offers chunking and direct pixel data transfer, making it arguably *more* suitable than Sixel for high-refresh rates.
+    *   **Visual Result:** Potentially **Pixel-perfect Doom 2 visuals** directly within a supporting terminal (e.g., Kitty, mlterm, iTerm2).
+    *   **Achievability:** **Highly achievable but extremely complex in COBOL.** Implementing a robust run-length encoder (RLE) for Sixel or the binary packing for Kitty's base64-encoded image chunks in pure COBOL is a monumental task involving byte-level manipulation and arithmetic. GnuCOBOL's `COMP-X` and `POINTER` data types would be crucial.
+    *   **Risks:**
+        *   **Extreme COBOL Complexity:** The encoding logic itself will add significant lines of COBOL code.
+        *   **Performance:** Generating large escape sequences and the terminal's parsing speed for high refresh rates (30-60 FPS) is a major unknown. Modern terminals are fast, but the COBOL generation overhead could be significant.
+        *   **Terminal Compatibility:** Relies heavily on the end-user having a Sixel or Kitty-compatible terminal.
+
+3.  **COBOL Calling SDL2 via FFI with a Minimal C Shim (<5% of code):**
+    *   **openai's Position:** "Pragmatic... True Doom 2-quality visuals... C Shim Scope... FFI Complexity... High Feasibility."
+    *   **My Critique:** openai hits the nail on the head regarding pragmatism and visual quality. This is the **MOST PRACTICAL AND ROBUST** approach for achieving "real Doom 2" visuals while absolutely respecting the >95% COBOL rule. The "minimal C shim" is critical.
+    *   **COBOL Contribution:** >95%. Here's the precise breakdown:
+        *   **COBOL's Role (95%+):** *All* game logic, raycasting calculations, texture mapping, sprite handling, HUD rendering. Crucially, COBOL will manage a raw, in-memory pixel buffer (e.g., `PIC X(WIDTH * HEIGHT * 4)`) where it *writes every single RGBA pixel value itself*. It's not offloading rendering; it's doing software rendering *into its own buffer*.
+        *   **C Shim's Role (<5%):**
+            1.  `sdl_init()`: Initialize SDL, create a window.
+            2.  `sdl_create_texture(width, height)`: Create an SDL_Texture with `SDL_PIXELFORMAT_RGBA32`.
+            3.  `sdl_update_texture(texture_ptr, pixel_buffer_ptr, pitch)`: Lock the texture, copy the raw pixel data from the COBOL-managed buffer into the texture, unlock.
+            4.  `sdl_present_renderer()`: Clear, copy texture to renderer, present.
+            5.  `sdl_event_poll()`: Minimal event polling (e.g., window close) and passing key presses back to COBOL.
+        *   **Crucial Point:** The C shim *never touches pixel data directly for drawing*. It's a pure display driver and input shim. All rasterization is done in COBOL. This fully upholds the >95% rule and the "not a renderer" external code rule.
+    *   **Visual Result:** **True, uncompromised Doom 2 visuals.** SDL2 provides direct pixel access, allowing perfect reproduction of Doom's aesthetic.
+    *   **Achievability:** **Extremely High.** GnuCOBOL's FFI capabilities (`CALL 'c_function_name' USING ...`) are robust. Data structures like pointers and `BY REFERENCE` passing are well-supported.
+    *   **Risks:**
+        *   **FFI Debugging:** Initial setup and pointer management can be tricky to debug across language boundaries.
+        *   **Shim Creep:** Developers *must* be disciplined to keep the C shim minimal and resist the temptation to offload rendering logic to it.
+
+4.  **COBOL Generating Raw Framebuffer and Piping to Viewer:**
+    *   **openai's Position:** "Adds unnecessary complexity and performance issues... Inferior to SDL2 FFI."
+    *   **My Critique:** I concur with openai. This approach introduces inter-process communication (IPC) overhead and an external dependency that is clumsier and less efficient than direct FFI. It's essentially a less elegant version of the SDL2 approach.
+    *   **Verdict:** **Dismissed.**
+
+---
+
+### Conclusion for Round 1:
+
+**Primary Recommendation: SDL2 via FFI (Approach 3)**
+This is the most **pragmatic and robust** solution to achieve **true Doom 2 pixel fidelity** while flawlessly adhering to the >95% COBOL codebase requirement. COBOL handles *all* rendering logic and pixel manipulation into a raw buffer, and the C shim acts purely as a display driver.
+
+**Secondary Exploration: COBOL Generating Kitty/Sixel Image Protocols (Approach 2)**
+This is the **most elegant pure COBOL** solution for pixel graphics. While significantly more complex to implement the encoding in COBOL, it deserves deep exploration for its philosophical purity and potential to deliver pixel-perfect results within the terminal. It proves COBOL *can* do pixel graphics without *any* external graphics library, relying solely on terminal capabilities.
+
+For the next rounds, we should dive deeper into the concrete COBOL implementation details for both the FFI buffer management and the Kitty/Sixel encoding, as well as benchmarking potential performance implications.
+[tokens: 5037, 21.6s]
+
+--- [OPENAI] ---
+**Round 3: Exploring New Dimensions**
+
+Let's break down the potential approaches while focusing on practicality and feasibility given the constraints:
+
+### Approach 1: Unicode Half-blocks + 24-bit ANSI Truecolor
+- **Visual Result**: Limited to character representation; cannot mimic Doom 2's pixel art.
+- **Achievability/Risk**: Easy to implement but does not meet the visual fidelity requirement. It is more of an elaborate ASCII art rather than pixel graphics.
+- **Conclusion**: Ineffective for the goal. Discard it.
+
+### Approach 2: COBOL Generating Sixel/Kitty Image Protocol
+- **COBOL Complexity**: Capable of handling escape sequence generation. This approach keeps the rendering logic in COBOL and uses terminal capabilities for pixel output.
+- **Visual Result**: Can achieve terminal-based pixel graphics, matching the aesthetic of Doom 2 more closely.
+- **Performance**: Potential bottlenecks in data transmission to the terminal. Requires optimization, possibly with a minimal C shim for high-frequency flushing.
+- **Conclusion**: Viable for a purist COBOL approach. High potential if performance can be managed.
+
+### Approach 3: COBOL Calling SDL2 via FFI with a Minimal C Shim
+- **Codebase Integrity**: Critical to maintain >95% COBOL by limiting C to basic SDL2 setup and buffer presentation.
+- **Visual Result**: Full Doom 2 visual fidelity achieved by leveraging SDL2 for rendering while keeping logic in COBOL.
+- **Risk**: High discipline required to prevent C code from taking over rendering responsibilities.
+- **Conclusion**: Strongest for visual fidelity, but rigid control over C involvement is necessary.
+
+### Approach 4: COBOL Generating Raw Framebuffer Piped to a Tiny Viewer
+- **Visual Result**: Full control over every pixel, enabling Doom 2-like visuals.
+- **COBOL Role**: Manages pixel data and game logic; external viewer acts purely as a display.
+- **Achievability/Risk**: Viewer complexity must remain low to keep COBOL at >95%.
+- **Conclusion**: Potentially viable but balancing viewer simplicity with performance is challenging.
+
+### New Consideration: COBOL WAD File Parsing
+- **Role**: Essential for leveraging Doom 2's original assets.
+- **COBOL Capability**: Fully capable of reading and parsing binary WAD files, keeping asset management within COBOL.
+- **Impact**: Supports all approaches by providing authentic Doom 2 textures and sprites.
+- **Conclusion**: Integral for achieving authentic visuals across viable approaches.
+
+### Final Analysis
+- **Approach 2 and 3 are the strongest contenders.** Approach 2 allows for a high degree of COBOL purity with terminal-based pixel output, while Approach 3 provides unmatched visual fidelity through SDL2, with strict limitations on C code to maintain the >95% COBOL requirement.
+- **COBOL's role in WAD file parsing is crucial** for either approach to use genuine Doom 2 assets, ensuring that the visuals remain true to the original game's aesthetic.
+
+**Next Steps**: 
+- For Approach 2, focus on optimizing COBOL's Sixel/Kitty escape sequence generation and handling terminal output performance issues.
+- For Approach 3, maintain rigorous codebase discipline to ensure SDL2 remains a thin rendering layer, with all logic and asset management in COBOL.
+
+Continue to critique these positions, explore potential optimizations, and assess real-world implementation hurdles.
+[tokens: 2607, 14.1s]
+
+================================================================================
+ROUND 5
+================================================================================
+
+--- [GEMINI] ---
+The `openai` analysis for Round 3 is a decent starting point, but it's too quick to dismiss options or understates the complexities and opportunities. My role is to push boundaries, and the definition of "minimal C" and "Doom 2 quality" demands a much sharper focus.
+
+Here’s my critique and refined stance:
+
+### Re-evaluation & Critique of `openai`'s Round 3
+
+1.  **Approach 1: Unicode Half-blocks + 24-bit ANSI Truecolor**
+    *   `openai`'s conclusion: "Ineffective for the goal. Discard it."
+    *   **My Critique**: *Correctly discarded*. While COBOL *could* do magnificent feats with truecolor half-blocks (e.g., dithered, parallaxed walls via Unicode), it will *never* be Doom 2. The core requirement is "recognizably Doom 2," which means pixel graphics, not character-cell approximations, however clever.
+
+2.  **Approach 2: COBOL Generating Sixel/Kitty Image Protocol**
+    *   `openai`'s points: "Can achieve terminal-based pixel graphics," "Potential bottlenecks in data transmission... minimal C shim for high-frequency flushing." "High potential if performance can be managed."
+    *   **My Critique**:
+        *   **Underselling COBOL's Role**: `openai` only touches on "escape sequence generation." This is a monumental COBOL challenge! It means:
+            *   **Palette/Truecolor Conversion**: COBOL reading Doom's 8-bit palette and converting every texture/sprite pixel to 24-bit RGB values (`RRGGBB` in Kitty, or complex RLE for Sixel).
+            *   **Terminal Pixel Mapping**: Translating game world coordinates and Doom's original 320x200 resolution to the terminal's Sixel/Kitty *character-cell-based pixel resolution* (e.g., a 120x40 character terminal might offer 720x480 pixels in Sixel/Kitty, or a 1:1 map to physical pixels). This mapping and scaling is *all COBOL*.
+            *   **Efficient String Generation**: Not just generating sequences, but *optimizing them*. Kitty has run-length encoding for repeated pixels, Sixel has its own compact format. COBOL must implement these optimizations to reduce data volume. This is complex `STRING`, `UNSTRING`, `MOVE CORRESPONDING`, and `INSPECT` hell, but totally doable in COBOL.
+            *   **Data Volume Bottleneck**: `openai` mentions "potential bottlenecks." This isn't potential, it's *guaranteed*. Even optimized sequences for 720x480 pixels (a common Sixel resolution) will be hundreds of KB per frame. COBOL `DISPLAY` or `CALL "CBL_OC_FILE_WRITE"` for raw bytes *is* the flush mechanism. A C shim here would simply be a custom `fwrite` wrapper, which barely saves anything on system calls and could arguably be integrated into GnuCOBOL's runtime. The bottleneck is the *terminal emulator's render speed* and the *bandwidth*.
+        *   **Visual Result**: This *can* achieve recognizably pixelated Doom 2, but *at the terminal's pixel resolution*, not Doom's native 320x200. It's an emulation within a terminal.
+        *   **Conclusion**: **Highly viable for maximum COBOL purity (>99.9%) and pushing terminal limits.** But the performance will be a constant battle, and true native Doom 2 resolution is impossible.
+
+3.  **Approach 3: COBOL Calling SDL2 via FFI with a Minimal C Shim**
+    *   `openai`'s points: "Full Doom 2 visual fidelity," "limiting C to basic SDL2 setup and buffer presentation," "Risk: High discipline required to prevent C code from taking over."
+    *   **My Critique**:
+        *   **C Shim Definition**: `openai` is vague. We need to be surgical. The C shim is **not** for "rendering responsibilities." It handles precisely 5-7 core SDL functions: `SDL_Init`, `SDL_CreateWindow`, `SDL_CreateRenderer`, `SDL_CreateTexture` (from COBOL's raw pixel buffer), `SDL_UpdateTexture`, `SDL_RenderClear`, `SDL_RenderCopy`, `SDL_RenderPresent`, `SDL_PollEvent` (to pass input to COBOL), and `SDL_Quit`. That's it. It's a header and a `.c` file with simple wrappers around these. This is *easily* <1% of the codebase, ensuring >99% COBOL.
+        *   **COBOL's True Role**: COBOL would allocate a large `PIC X(WIDTH * HEIGHT * 4)` memory block (e.g., 320x200x4 bytes for RGBA). *All* raycasting, texture lookup, perspective correction, palette-to-truecolor conversion, sprite plotting, HUD drawing, and pixel data generation happens in COBOL, filling this buffer. Then, COBOL calls the C shim with a pointer to this buffer. This is a *massive* COBOL undertaking, but it is *the core game logic and rendering engine*.
+        *   **Visual Result**: **The only way to achieve true, native Doom 2 pixel output** (e.g., 320x200 resolution, scaled up by SDL) with optimal performance. This is the gold standard for "Doom 2 quality visuals."
+        *   **Conclusion**: **The strongest contender for visual fidelity and performance, while rigidly adhering to the >95% COBOL rule.** The "risk" of C creep is manageable with strict interface definition.
+
+4.  **Approach 4: COBOL Generating Raw Framebuffer Piped to a Tiny Viewer**
+    *   `openai`'s points: "Full control over every pixel," "Viewer complexity must remain low," "potentially viable but balancing viewer simplicity with performance is challenging."
+    *   **My Critique**:
+        *   **Fundamentally Flawed for the Constraints**: This approach is either:
+            1.  **IPC Overhead**: If "piped" means `stdin`/`stdout` or named pipes to a *separate process* viewer. This introduces significant IPC overhead, complicates synchronization, and adds latency, making it *inferior* to Approach 3 for performance.
+            2.  **Redundant with FFI**: If the "tiny viewer" is a C library loaded via FFI, it's just a less specific re-description of Approach 3. It offers no new benefits.
+        *   **Conclusion**: **Discard as a distinct, viable approach.** It provides no advantage over FFI/SDL2 and introduces complexity or performance penalties.
+
+5.  **New Consideration: COBOL WAD File Parsing**
+    *   `openai`'s conclusion: "Integral for achieving authentic visuals across viable approaches."
+    *   **My Critique**: **Absolutely correct and essential.** COBOL's binary file I/O (`FILE-CONTROL`, `OPEN INPUT`, `READ`, `REDEFINES`, `COMP-X` for binary fields) is perfectly capable of parsing the WAD structure, lumps, map data, textures, sprites, and palette. This must be 100% COBOL and serves as the foundation for any visual approach.
+
+### My Strongest Positions (Round 3)
+
+Given the "looks like real Doom 2" and ">95% COBOL" requirements, we have two primary contenders, each pushing a different boundary:
+
+*   **Approach A (Visual Purity): COBOL with SDL2 via FFI**
+    *   **COBOL vs External:** >99% COBOL. The C shim is *literally* a few dozen lines wrapping SDL functions. It provides a raw pixel buffer and receives input events. All game logic, asset loading, pixel rendering, and buffer manipulation is **100% COBOL**.
+    *   **Visual Result:** Uncompromised Doom 2 fidelity. Full resolution (e.g., 320x200 or scaled), full color, high framerates. This is the *only* way to truly achieve "real Doom 2 visuals" as per the requirement, without relying on terminal approximations.
+    *   **Achievability/Risks:** Highly achievable. The C shim is trivial to write and maintain. The risk of C code creep is managed by the extremely narrow interface. The bulk of the work is in the COBOL pixel pipeline, which is challenging but fully within COBOL's capabilities (mathematics, string/byte manipulation, memory management via `ALLOCATE` for the framebuffer).
+
+*   **Approach B (COBOL Purity/Terminal Maximization): COBOL Generating Sixel/Kitty Image Protocols**
+    *   **COBOL vs External:** >99.9% COBOL. No external C code required. The terminal emulator handles the interpretation.
+    *   **Visual Result:** Recognizable pixel graphics in the terminal. The resolution will be constrained by the terminal's capabilities, not Doom's native resolution. Performance will be the *absolute bottleneck* due to the sheer volume of data printed to `stdout` every frame. It's a "Doom 2 *style*" rather than "real Doom 2" due to this resolution constraint and performance overhead.
+    *   **Achievability/Risks:** Achievable, but extremely difficult to optimize in COBOL for acceptable framerates. COBOL will be generating enormous, complex escape sequences with palette-to-truecolor conversion and possibly run-length encoding. This pushes COBOL string processing and `DISPLAY` performance to its absolute limit. A true technical marvel if a smooth framerate is achieved.
+
+**Conclusion for Round 3**: For "looks like real Doom 2," **Approach A (SDL2 via FFI)** is the only path that meets the visual fidelity requirement without compromise, while easily maintaining >95% COBOL. Approach B is a fascinating exercise in COBOL purity and terminal manipulation but compromises significantly on visual fidelity and performance due to the nature of terminal emulation.
+
+**Next Steps**: We need to further debate the *true meaning* of "looks like real Doom 2" and how much compromise on visual fidelity is acceptable for higher COBOL purity. I argue that "looks like real Doom 2" implies native resolution and smooth framerate, which strongly favors Approach A.
+[tokens: 6803, 28.6s]
+
+--- [OPENAI] ---
+### Round 1 Response:
+
+**Approach 3: SDL2 via FFI**
+
+- **Strengths:**
+  - **True Doom 2 Visuals:** Offers the highest fidelity, preserving Doom 2's look.
+  - **COBOL-C Separation:** Keeps COBOL in charge of game logic and rendering, with C handling display.
+  - **Robustness:** SDL2 is a proven library for rendering, minimizing compatibility issues.
+
+- **Weaknesses:**
+  - **FFI Complexity:** Managing pointers and memory across COBOL and C can be error-prone.
+  - **Code Discipline Required:** Ensuring the C shim remains minimal is critical to maintain >95% COBOL.
+
+- **Conclusion:** Most practical for achieving high-quality visuals with COBOL as the dominant codebase.
+
+**Approach 2: COBOL Generating Sixel/Kitty Image Protocols**
+
+- **Strengths:**
+  - **Pure COBOL:** Achieves pixel graphics without external libraries, maintaining purity.
+  - **Terminal Capabilities:** Utilizes modern terminal capabilities for pixel-level detail.
+
+- **Weaknesses:**
+  - **Complex Encoding:** Implementing efficient encoding in COBOL is complex and error-prone.
+  - **Performance Concerns:** Terminal handling of large escape sequences could limit FPS.
+
+- **Conclusion:** Ambitious and philosophically appealing, but challenging to implement for real-time performance.
+
+**Approach 4: COBOL Generating Raw Framebuffer and Piping to Viewer**
+
+- **Strengths:**
+  - **Separation of Concerns:** Clearly separates rendering logic from display.
+
+- **Weaknesses:**
+  - **Inefficiency:** IPC overhead and reliance on an external viewer reduce performance.
+  - **Inferior to FFI:** Adds complexity without additional benefits over SDL2 FFI.
+
+- **Conclusion:** Dismissed due to inefficiency and complexity without clear advantages.
+
+### Further Exploration for Round 2:
+
+- **SDL2 FFI Approach:** Detail COBOL buffer management and explore potential issues with FFI debugging and integration.
+- **Sixel/Kitty Encoding:** Develop strategies for efficient COBOL string manipulation and encoding, considering terminal performance.
+- **Benchmarking:** Plan for performance analysis of both approaches to ensure real-time capabilities.
+- **Potential Risks & Mitigations:** Identify key risks in implementation and propose strategies to mitigate them.
+
+Let's dive deeper into the technical specifics of the chosen approaches, and critically evaluate the feasibility of each.
+[tokens: 2737, 12.9s]
+
+================================================================================
+ROUND 6
+================================================================================
+
+--- [GEMINI] ---
+### Round 1 Response: Creative Systems Architect's Position
+
+The core directive is to achieve "recognizably Doom 2" visuals while *strictly* adhering to the >95% COBOL rule. openai's initial assessment leans heavily on SDL2 FFI, underestimating the challenges of keeping the C shim minimal in practice, and crucially, *completely overlooking* the powerful, pure-COBOL potential of enhanced character-based rendering. My position prioritizes strategies that guarantee COBOL dominance and visual quality.
+
+---
+
+*   **Critique of openai's prioritization of Approach 3 (SDL2 via FFI):**
+    *   **"Minimal C shim" is a dangerous illusion.** While theoretically possible, a C shim for SDL2 inherently requires initialization, event handling, texture creation, pixel buffer upload, and blitting. Each of these steps, if not meticulously constrained, provides an opportunity for feature creep, turning a "shim" into a mini-renderer. Maintaining >95% COBOL becomes a constant battle against the convenience of C.
+    *   **FFI Debugging is a significant risk.** Interfacing COBOL's data structures and memory management with C pointers is complex. Debugging memory leaks, type mismatches, and segmentation faults across language boundaries is an order of magnitude harder than within a single language. This increases development time and introduces critical stability risks.
+    *   **Proposed Mitigation (if chosen):** The C shim *must* be reduced to a single, hyper-specific function: `void display_raw_pixel_buffer(const unsigned char* pixel_data, int width, int height);`. This function's sole job is to take a raw RGBA pixel buffer *entirely generated by COBOL*, upload it to a pre-initialized SDL texture, and present it. No drawing, no game logic, no input handling in C. This *might* keep it under the 5% threshold, but it's an ongoing vigilance task.
+
+*   **Strong Advocacy for Approach 2 (COBOL Generating Sixel/Kitty Image Protocols):**
+    *   **Visual Result:** This is the *most direct* path to true pixel graphics within a terminal environment. The output is a pixel grid, indistinguishable from other pixel rendering methods to the user, provided the terminal supports it. This unequivocally achieves "recognizably Doom 2" quality.
+    *   **COBOL Dominance Guaranteed:** This approach *forces* almost all rendering logic into COBOL.
+        *   **Sixel:** COBOL manipulates raw pixel buffers, performs any necessary dithering/quantization, encodes the sixel data stream (bit-packing, run-length encoding if optimizing), and then applies Base64 encoding. While Base64 in COBOL is verbose, it's a fixed, algorithmic task (lookup table, bit shifts, string concatenation) perfectly within GnuCOBOL's capabilities.
+        *   **Kitty Graphics Protocol:** This is even more compelling. COBOL generates the raw pixel buffer (e.g., RGBA). A **truly minimal C micro-shim** (`CALL "write_image_to_kitty_protocol" USING pixel-buffer, width, height, image-format`) could then leverage a tiny library like `libpng` or `libjpeg` to compress the image and Base64 encode it for the Kitty protocol. This shim is effectively *two library calls and a base64 pass*, easily fitting within <5% of lines of code, leaving the *entire* raycasting, texture mapping, and pixel buffer generation to COBOL.
+    *   **Performance:** The primary bottleneck for Sixel/Kitty will be the terminal emulator's speed at parsing and rendering large escape sequences, not COBOL's ability to generate them. COBOL is perfectly capable of rapidly processing and manipulating large data buffers.
+    *   **Risk Mitigation:** The "micro-shim" strategy for Kitty (or Sixel Base64 encoding if COBOL is too slow) provides a highly constrained, auditable external dependency that is far less prone to mission creep than a full SDL2 setup.
+
+*   **Unfairly Dismissed - Re-evaluating Approach 1 (Textured Raycasting with Unicode Half-Blocks + 24-bit ANSI Truecolor):**
+    *   **COBOL vs External:** 100% Pure COBOL. This is the **safest and most compliant** approach to the >95% rule, making it a critical contender.
+    *   **Visual Result:** This is *not* a "generic ASCII raycaster." By leveraging `U+2580` (Upper Half Block) and `U+2584` (Lower Half Block) combined with `U+2588` (Full Block), and critically, **24-bit ANSI Truecolor** for both foreground and background, we effectively render two vertical "pixels" per character cell. This significantly increases vertical resolution. With careful mapping of Doom's distinct textures and palette to character blocks and truecolor, we can achieve surprisingly high fidelity and a visual aesthetic that is **definitely "recognizably Doom 2"** within a terminal's character grid. Think of it as a high-resolution, full-color ANSI Doom.
+    *   **Achievability:** Highly achievable. It builds directly upon the existing COBOL raycaster's character output model. Instead of simple characters, COBOL's output logic would generate `\x1b[38;2;R;G;Bm\x1b[48;2;R;G;Bm<unicode_block_char>\x1b[0m` sequences. This is pure string manipulation, a core strength of COBOL.
+    *   **Risks:** Still character-based, so resolution limits and subtle distortion will exist. However, for a pure-COBOL solution, its visual potential is vastly underestimated and warrants serious development. This approach should be the *first* target for visual improvement before resorting to any external pixel protocols or FFI.
+[tokens: 5626, 23.8s]
+
+--- [OPENAI] ---
+### Re-Evaluation & Critique of `gemini`'s Round 3
+
+1. **Approach A: COBOL with SDL2 via FFI**
+   - **COBOL vs External:** >99% COBOL with minimal C for SDL initialization and buffer handling.
+   - **Visual Result:** True Doom 2 fidelity with optimal performance and native resolution.
+   - **Achievability/Risks:** Manageable with strict SDL function wrapper guidelines. COBOL handles the pixel pipeline, which is a significant task but feasible.
+
+   **My Critique:**
+   - **Strength:** Absolutely correct about achieving true Doom 2 visuals. SDL2 ensures high performance and full color depth.
+   - **Weakness:** Dependency on SDL2 might not align with the project's philosophical purity. While SDL2 minimizes C code, it introduces an external dependency that could be seen as a deviation from the core COBOL challenge.
+
+2. **Approach B: COBOL Generating Sixel/Kitty Image Protocols**
+   - **COBOL vs External:** >99.9% COBOL, leveraging terminal capabilities.
+   - **Visual Result:** Recognizable pixel graphics, constrained by terminal resolution and performance bottlenecks.
+   - **Achievability/Risks:** Complex optimization required for COBOL string handling and rendering performance.
+
+   **My Critique:**
+   - **Strength:** Maximum COBOL purity with innovative use of terminal capabilities. A testament to what COBOL can achieve.
+   - **Weakness:** Performance limitations are significant. Terminal emulation can't match SDL2's performance, impacting gameplay fluidity and visual fidelity.
+
+3. **Alternative Approach: Enhanced Text Mode with Unicode Half-blocks + Truecolor**
+   - **COBOL vs External:** >99.9% COBOL with direct terminal manipulation.
+   - **Visual Result:** Enhanced ASCII art, leveraging half-block characters and truecolor to approximate Doom 2 aesthetics.
+   - **Achievability/Risks:** Limited by character cell resolution but maintains high COBOL purity.
+
+   **My Critique:**
+   - **Strength:** High COBOL purity with a creative twist on text mode graphics.
+   - **Weakness:** Ultimately fails to capture the full pixel detail of Doom 2, offering a stylized interpretation instead.
+
+### Conclusion for Further Debate
+- **Primary Contender (A):** SDL2 via FFI remains the primary path for true visual fidelity, but the challenge lies in balancing philosophical purity with practical outcomes.
+- **Secondary Contender (B):** Sixel/Kitty approach is an engineering marvel in COBOL optimization but might not satisfy all visual fidelity expectations.
+- **Exploratory (New):** Enhanced text mode offers a high-purity, creative alternative but falls short of true Doom 2 visuals.
+
+**Next Steps:** Focus on further exploring Approach B's optimization potential and gathering consensus on the acceptable balance between COBOL purity and visual fidelity.
+[tokens: 3273, 11.9s]
+
+================================================================================
+ROUND 7
+================================================================================
+
+--- [GEMINI] ---
+This is the final round, and it's time to cut through the philosophical debates and land on a concrete technical path that delivers on the promise: "looks like real Doom 2."
+
+### Points of Agreement:
+
+*   **COBOL Purity is Paramount:** All participants agree the >95% COBOL codebase requirement is non-negotiable. This means COBOL must handle the raycasting engine, texture mapping, sprite drawing, game logic, and all pixel-level data manipulation.
+*   **Text-Mode Limitations:** There's a shared understanding that pure text-mode approaches (Unicode half-blocks, ANSI truecolor) while maximizing COBOL purity, *cannot* achieve true Doom 2 visual fidelity due to inherent character cell limitations. They will produce a *stylized interpretation*, not "real Doom 2."
+*   **Sixel/Kitty Complexity & Performance:** Generating Sixel/Kitty escape sequences *from COBOL* is technically feasible for pixel output, demonstrating incredible COBOL prowess. However, there's significant agreement on the massive performance bottleneck and string manipulation overhead, making fluid gameplay unlikely in a typical terminal environment. It's an engineering marvel but a practical bottleneck for Doom's real-time demands.
+
+### Remaining Disagreements & My Final Position:
+
+The core disagreement boils down to the interpretation of "looks like real Doom 2" and the acceptable "purity cost" for achieving it.
+
+*   **Sixel/Kitty vs. "Real Doom 2" Performance:** While Sixel/Kitty *can* technically produce pixel graphics, the consensus highlights its abysmal refresh rate when driven by COBOL string output to a terminal. "Real Doom 2" needs fluid animation at decent resolutions (e.g., 320x200 at 35Hz). Sixel/Kitty will deliver a slideshow, not a game experience. This fundamentally fails the "looks like real Doom 2" requirement from a *playability* perspective.
+
+*   **SDL2 via FFI - The Only Viable Path for Visual Fidelity:**
+    *   **Agreement:** SDL2 delivers true pixel-accurate, high-performance visuals at arbitrary resolutions, perfectly matching Doom 2's aesthetic.
+    *   **The "Purity" Argument (My position):** The prompt states "minimal C/Python helper code must be absolutely minimal (a thin shim, not a renderer)." This is precisely what SDL2 via FFI enables.
+        *   **COBOL does 99.9% of the creative work:** The *entire* Doom 2 rendering pipeline (raycasting, texture lookups, perspective correction, sprite drawing, z-buffering, palette management, pixel buffer creation) is implemented in COBOL. This is the heart and soul of the visual *look*.
+        *   **The C shim is a dumb display driver:** Its sole purpose is to:
+            1.  Initialize SDL.
+            2.  Create a window and a texture.
+            3.  Receive a raw pixel buffer *prepared entirely by COBOL*.
+            4.  Update the SDL texture with this COBOL-generated buffer.
+            5.  Flip/present the buffer.
+            6.  Handle input events (which can then be passed *back to COBOL*).
+        *   **This *is* a thin shim, not a renderer in spirit.** COBOL *is* the renderer. SDL2 is merely the *display mechanism*. The vast majority of the "rendering" logic and complexity resides in COBOL. The C code would likely be 50-100 lines, total, making it well under 1% of the codebase.
+
+### My Final Verdict:
+
+To genuinely achieve a COBOL-based Doom 2 that **"LOOKS like real Doom 2"** (implying pixel-accurate textures, sprites, fluid movement, and correct color depth), **Approach 3 (COBOL calling SDL2 via FFI with a minimal C shim)** is the *only* technically viable solution that satisfies both the visual requirement and the >95% COBOL codebase constraint.
+
+*   **Visual Result:** Perfect Doom 2 fidelity.
+*   **COBOL vs. External:** >99% COBOL, with C shim handling only platform display details. COBOL handles the *entire* pixel generation pipeline.
+*   **Achievability/Risks:** Highly achievable. Risks are minimal, primarily FFI binding complexity, which is well-understood.
+*   **Why it wins:** It doesn't compromise on the visual goal. The creative challenge shifts from *displaying* pixels to *generating* them entirely in COBOL, then *handing off* the final buffer. This keeps COBOL in command of the visual *representation*, which is the spirit of the project.
+
+**The true creative challenge isn't to draw pixels with escape sequences but to *simulate a GPU* entirely within COBOL, then let a minimal shim present the result.** This aligns perfectly with pushing the boundaries of old tech to achieve modern (retro-modern) results.
+[tokens: 3404, 12.1s]
+
+--- [OPENAI] ---
+**Final Position:**
+
+**Agreements:**
+
+- **COBOL Dominance:** All agree that maintaining >95% COBOL is crucial and non-negotiable.
+- **SDL2 via FFI Risks:** We concur that relying heavily on SDL2 introduces risks like feature creep and debugging nightmares, making it a less favorable option.
+- **Sixel/Kitty Image Protocols:** Acknowledged as a viable path to achieving high-quality visuals without breaching the COBOL dominance rule.
+
+**Disagreements:**
+
+- **Textured Raycasting with Unicode Half-Blocks + Truecolor:**
+  - While initially dismissed, there's recognition of its potential for achieving recognizable visuals entirely in COBOL. However, the visual result may still fall short of true pixel graphics fidelity, especially for complex scenes.
+
+**Final Position:**
+
+- **Primary Approach: Textured Raycasting with Unicode Half-Blocks + 24-bit ANSI Truecolor**
+  - **COBOL:** 100% COBOL, leveraging its string manipulation strengths.
+  - **Visual Result:** Recognizably Doom 2 with a unique high-res ANSI aesthetic.
+  - **Risks:** Limited resolution and potential distortion, but highest compliance with requirements.
+
+- **Secondary Approach: COBOL Generating Sixel/Kitty Image Protocols**
+  - **COBOL vs External:** COBOL handles all rendering logic; minimal C shim for encoding/compression.
+  - **Visual Result:** Higher fidelity, true pixel graphics.
+  - **Risks:** Terminal performance and compatibility, slight deviation from pure COBOL.
+
+- **Conclusion:** Start with the pure COBOL approach using Unicode and Truecolor to validate feasibility. If visual quality is insufficient, implement Sixel/Kitty protocols as a secondary measure to enhance fidelity while keeping the C shim minimal and controlled.
+[tokens: 2065, 7.8s]
+
+================================================================================
+DEBATE COMPLETE
+================================================================================
