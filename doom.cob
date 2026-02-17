@@ -515,9 +515,9 @@
       *> Determine wall shade character by distance
            EVALUATE TRUE
                WHEN WS-DEPTH-VAL(WS-CUR-COL) < 3
-                   MOVE "@" TO WS-SHADE-CHAR
-               WHEN WS-DEPTH-VAL(WS-CUR-COL) < 5
                    MOVE "#" TO WS-SHADE-CHAR
+               WHEN WS-DEPTH-VAL(WS-CUR-COL) < 5
+                   MOVE "%" TO WS-SHADE-CHAR
                WHEN WS-DEPTH-VAL(WS-CUR-COL) < 8
                    MOVE "=" TO WS-SHADE-CHAR
                WHEN WS-DEPTH-VAL(WS-CUR-COL) < 12
