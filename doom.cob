@@ -120,26 +120,22 @@
        01 WS-HIT-CELL-BUF.
           05 WS-HITC-VAL  PIC 9 OCCURS 120 TIMES.
 
+       01 WS-FRAME.
+          05 WS-FRAME-ROW OCCURS 40 TIMES.
+             10 WS-FRAME-CELL PIC X OCCURS 120 TIMES.
+       01 WS-SHADE-CHAR   PIC X.
+       01 WS-WALL-COLOR   PIC 9.
+
        PROCEDURE DIVISION.
        MAIN-PROGRAM.
            PERFORM INIT-ANSI
            PERFORM INIT-TRIG
            PERFORM INIT-MAP
            PERFORM INIT-PLAYER
+           DISPLAY WS-ANSI-CLEAR
            PERFORM CAST-ALL-RAYS
-           DISPLAY "Raycasting complete."
-           DISPLAY "Col 1  dist: " WS-DEPTH-VAL(1)
-               " height: " WS-WALLH-VAL(1)
-               " top: " WS-WALLT-VAL(1)
-               " bot: " WS-WALLB-VAL(1)
-           DISPLAY "Col 60 dist: " WS-DEPTH-VAL(60)
-               " height: " WS-WALLH-VAL(60)
-               " top: " WS-WALLT-VAL(60)
-               " bot: " WS-WALLB-VAL(60)
-           DISPLAY "Col 120 dist: " WS-DEPTH-VAL(120)
-               " height: " WS-WALLH-VAL(120)
-               " top: " WS-WALLT-VAL(120)
-               " bot: " WS-WALLB-VAL(120)
+           PERFORM RENDER-FRAME
+           PERFORM DRAW-FRAME
            STOP RUN.
 
        TEST-INPUT.
@@ -366,6 +362,54 @@
            MOVE WS-WALL-H TO WS-WALLH-VAL(WS-CUR-COL)
            MOVE WS-WALL-TOP TO WS-WALLT-VAL(WS-CUR-COL)
            MOVE WS-WALL-BOT TO WS-WALLB-VAL(WS-CUR-COL).
+
+       RENDER-FRAME.
+           PERFORM VARYING WS-CUR-COL FROM 1 BY 1
+               UNTIL WS-CUR-COL > WS-SCREEN-W
+               PERFORM RENDER-COLUMN
+           END-PERFORM.
+
+       RENDER-COLUMN.
+      *> Determine wall shade character by distance
+           EVALUATE TRUE
+               WHEN WS-DEPTH-VAL(WS-CUR-COL) < 3
+                   MOVE "@" TO WS-SHADE-CHAR
+               WHEN WS-DEPTH-VAL(WS-CUR-COL) < 5
+                   MOVE "#" TO WS-SHADE-CHAR
+               WHEN WS-DEPTH-VAL(WS-CUR-COL) < 8
+                   MOVE "=" TO WS-SHADE-CHAR
+               WHEN WS-DEPTH-VAL(WS-CUR-COL) < 12
+                   MOVE "-" TO WS-SHADE-CHAR
+               WHEN OTHER
+                   MOVE "." TO WS-SHADE-CHAR
+           END-EVALUATE
+
+      *> Fill this column row by row
+           PERFORM VARYING WS-ROW FROM 1 BY 1
+               UNTIL WS-ROW > WS-SCREEN-H
+               EVALUATE TRUE
+      *> Ceiling
+                   WHEN WS-ROW < WS-WALLT-VAL(WS-CUR-COL)
+                       MOVE " " TO
+                           WS-FRAME-CELL(WS-ROW, WS-CUR-COL)
+      *> Wall
+                   WHEN WS-ROW >= WS-WALLT-VAL(WS-CUR-COL)
+                       AND WS-ROW <= WS-WALLB-VAL(WS-CUR-COL)
+                       MOVE WS-SHADE-CHAR TO
+                           WS-FRAME-CELL(WS-ROW, WS-CUR-COL)
+      *> Floor
+                   WHEN WS-ROW > WS-WALLB-VAL(WS-CUR-COL)
+                       MOVE "," TO
+                           WS-FRAME-CELL(WS-ROW, WS-CUR-COL)
+               END-EVALUATE
+           END-PERFORM.
+
+       DRAW-FRAME.
+           DISPLAY WS-ANSI-HOME WITH NO ADVANCING
+           PERFORM VARYING WS-ROW FROM 1 BY 1
+               UNTIL WS-ROW > WS-SCREEN-H
+               DISPLAY WS-FRAME-ROW(WS-ROW)
+           END-PERFORM.
 
        DEBUG-MAP.
            PERFORM VARYING WS-I FROM 1 BY 1
