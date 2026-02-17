@@ -37,20 +37,56 @@
        01 WS-RAY-SIN      PIC S9(1)V9(6).
        01 WS-RAY-COS      PIC S9(1)V9(6).
 
+       01 WS-MAP-SIZE     PIC 9(2)   VALUE 16.
+       01 WS-I             PIC 9(3).
+       01 WS-J             PIC 9(3).
+
+       01 WS-MAP.
+          05 WS-MAP-ROW OCCURS 16 TIMES.
+             10 WS-MAP-CELL PIC 9 OCCURS 16 TIMES.
+
+       01 WS-MAP-DATA.
+          05 FILLER PIC X(16) VALUE "1111111111111111".
+          05 FILLER PIC X(16) VALUE "1000000100000001".
+          05 FILLER PIC X(16) VALUE "1010100100101001".
+          05 FILLER PIC X(16) VALUE "1010100000101001".
+          05 FILLER PIC X(16) VALUE "1000100100001001".
+          05 FILLER PIC X(16) VALUE "1110100111101001".
+          05 FILLER PIC X(16) VALUE "1000100000001001".
+          05 FILLER PIC X(16) VALUE "1011110101111001".
+          05 FILLER PIC X(16) VALUE "1000000100000001".
+          05 FILLER PIC X(16) VALUE "1010111100011101".
+          05 FILLER PIC X(16) VALUE "1010000200010001".
+          05 FILLER PIC X(16) VALUE "1010101111010101".
+          05 FILLER PIC X(16) VALUE "1000100000010101".
+          05 FILLER PIC X(16) VALUE "1011100101000101".
+          05 FILLER PIC X(16) VALUE "1000000100000091".
+          05 FILLER PIC X(16) VALUE "1111111111111111".
+
+       01 WS-MAP-DATA-R REDEFINES WS-MAP-DATA.
+          05 WS-MDR-ROW OCCURS 16 TIMES.
+             10 WS-MDR-CELL PIC 9 OCCURS 16 TIMES.
+
+       01 WS-PLAYER.
+          05 WS-PX         PIC S9(3)V9(4).
+          05 WS-PY         PIC S9(3)V9(4).
+          05 WS-PA         PIC S9(5).
+          05 WS-HEALTH     PIC 9(3).
+          05 WS-AMMO       PIC 9(3).
+
+       01 WS-GAME-OVER    PIC 9      VALUE 0.
+       01 WS-GAME-WON     PIC 9      VALUE 0.
+       01 WS-KILLS        PIC 9(2)   VALUE 0.
+       01 WS-TOTAL-ENEMIES PIC 9(2)  VALUE 0.
+
        PROCEDURE DIVISION.
        MAIN-PROGRAM.
            PERFORM INIT-ANSI
            PERFORM INIT-TRIG
-           PERFORM VERIFY-TRIG
-      *> Test angle wrapping
-           MOVE -45 TO WS-ANGLE-WORK
-           PERFORM GET-SIN
-           PERFORM GET-COS
-           DISPLAY "sin(-45)=" WS-RAY-SIN " cos(-45)=" WS-RAY-COS
-           MOVE 405 TO WS-ANGLE-WORK
-           PERFORM GET-SIN
-           PERFORM GET-COS
-           DISPLAY "sin(405)=" WS-RAY-SIN " cos(405)=" WS-RAY-COS
+           PERFORM INIT-MAP
+           PERFORM INIT-PLAYER
+           DISPLAY WS-ANSI-CLEAR
+           PERFORM DEBUG-MAP
            STOP RUN.
 
        TEST-INPUT.
@@ -131,3 +167,42 @@
            COMPUTE WS-ANGLE-LOOKUP =
                FUNCTION MOD(WS-ANGLE-WORK + 3600, 360) + 1
            MOVE WS-COS-VAL(WS-ANGLE-LOOKUP) TO WS-RAY-COS.
+
+       INIT-MAP.
+           PERFORM VARYING WS-I FROM 1 BY 1
+               UNTIL WS-I > 16
+               PERFORM VARYING WS-J FROM 1 BY 1
+                   UNTIL WS-J > 16
+                   MOVE WS-MDR-CELL(WS-I, WS-J)
+                       TO WS-MAP-CELL(WS-I, WS-J)
+               END-PERFORM
+           END-PERFORM.
+
+       INIT-PLAYER.
+           MOVE +001.5000 TO WS-PX
+           MOVE +001.5000 TO WS-PY
+           MOVE 0         TO WS-PA
+           MOVE 100       TO WS-HEALTH
+           MOVE 25        TO WS-AMMO.
+
+       DEBUG-MAP.
+           PERFORM VARYING WS-I FROM 1 BY 1
+               UNTIL WS-I > 16
+               MOVE SPACES TO WS-OUTPUT-LINE
+               PERFORM VARYING WS-J FROM 1 BY 1
+                   UNTIL WS-J > 16
+                   EVALUATE WS-MAP-CELL(WS-I, WS-J)
+                       WHEN 1 MOVE "#" TO
+                           WS-OUTPUT-LINE(WS-J:1)
+                       WHEN 0 MOVE "." TO
+                           WS-OUTPUT-LINE(WS-J:1)
+                       WHEN 2 MOVE "E" TO
+                           WS-OUTPUT-LINE(WS-J:1)
+                       WHEN 9 MOVE "X" TO
+                           WS-OUTPUT-LINE(WS-J:1)
+                   END-EVALUATE
+               END-PERFORM
+               DISPLAY WS-OUTPUT-LINE(1:16)
+           END-PERFORM
+           DISPLAY "Player at: " WS-PX " , " WS-PY
+               " angle: " WS-PA.
