@@ -37,6 +37,8 @@
        01 WS-COLOR-IDX         PIC 9(3).
        01 WS-CELL-X            PIC 9(3).
        01 WS-CELL-Y            PIC 9(3).
+       01 WS-TEX-U             PIC 9(3).
+       01 WS-TEX-V             PIC 9(3).
 
       *> --- WAD data structures ---
            COPY "wad-data.cpy".
@@ -52,8 +54,13 @@
            PERFORM LOAD-PALETTE
            PERFORM LOAD-COLORMAP
 
-      *>   Render palette test pattern
-           PERFORM RENDER-PALETTE-TEST
+      *>   Load textures and flats
+           PERFORM LOAD-PNAMES
+           PERFORM LOAD-TEXTURE-DEFS
+           PERFORM LOAD-FLATS
+
+      *>   Render first texture as test
+           PERFORM RENDER-TEXTURE-TEST
 
       *>   Main loop — display + handle input
            PERFORM UNTIL WS-RUNNING = 0
@@ -72,25 +79,47 @@
            STOP RUN.
 
       *> ============================================================
-      *> RENDER-PALETTE-TEST: 16x16 grid of all 256 palette colors
-      *> Each cell: 20px wide x 12px tall = 320x192 pixels
+      *> RENDER-TEXTURE-TEST: display first loaded wall texture
+      *> scaled to fill the screen (320x200)
       *> ============================================================
-       RENDER-PALETTE-TEST.
+       RENDER-TEXTURE-TEST.
+           IF WS-TEX-COUNT = 0
+               DISPLAY "No textures to display"
+               EXIT PARAGRAPH
+           END-IF
+           DISPLAY "Showing texture: " WT-NAME(1)
+               " (" WT-WIDTH(1) "x" WT-HEIGHT(1) ")"
            MOVE LOW-VALUES TO WS-FRAMEBUFFER
            PERFORM VARYING WS-PIX-Y FROM 0 BY 1
-               UNTIL WS-PIX-Y >= 192
+               UNTIL WS-PIX-Y >= 200
                PERFORM VARYING WS-PIX-X FROM 0 BY 1
                    UNTIL WS-PIX-X >= 320
-      *>           Which palette cell (0-15, 0-15)
-                   COMPUTE WS-CELL-X = WS-PIX-X / 20
-                   COMPUTE WS-CELL-Y = WS-PIX-Y / 12
-      *>           Palette index (1-based)
-                   COMPUTE WS-COLOR-IDX =
-                       WS-CELL-Y * 16 + WS-CELL-X + 1
-      *>           Framebuffer byte offset (1-based)
+      *>           Texture coordinates
+                   COMPUTE WS-TEX-U =
+                       WS-PIX-X * WT-WIDTH(1) / 320
+                   COMPUTE WS-TEX-V =
+                       WS-PIX-Y * WT-HEIGHT(1) / 200
+      *>           Column-major pixel offset
+                   COMPUTE WS-TEX-PIX-OFF =
+                       WS-TEX-U * WT-HEIGHT(1)
+                       + WS-TEX-V + 1
+                   IF WS-TEX-PIX-OFF < 1
+                       OR WS-TEX-PIX-OFF > 16384
+                       MOVE 1 TO WS-TEX-PIX-OFF
+                   END-IF
+      *>           Get palette index from texture
+                   MOVE WT-PIX(1, WS-TEX-PIX-OFF)
+                       TO WS-BIN-BUF1
+                   MOVE WS-BIN-BYTE TO WS-COLOR-IDX
+      *>           Convert to 1-based palette index
+                   ADD 1 TO WS-COLOR-IDX
+                   IF WS-COLOR-IDX > 256
+                       MOVE 1 TO WS-COLOR-IDX
+                   END-IF
+      *>           Framebuffer offset
                    COMPUTE WS-PIX-IDX =
                        (WS-PIX-Y * 320 + WS-PIX-X) * 4 + 1
-      *>           Write RGBA
+      *>           Write RGBA from palette
                    MOVE WS-PAL-R(WS-COLOR-IDX)
                        TO WS-FB-BYTE(WS-PIX-IDX)
                    ADD 1 TO WS-PIX-IDX
@@ -110,3 +139,8 @@
       *> WAD parser procedures
       *> ============================================================
            COPY "wad-parser.cpy".
+
+      *> ============================================================
+      *> WAD texture/flat loading procedures
+      *> ============================================================
+           COPY "wad-textures.cpy".
