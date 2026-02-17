@@ -163,6 +163,7 @@
        01 WS-ABS-DX       PIC S9(3)V9(4).
        01 WS-ABS-DY       PIC S9(3)V9(4).
        01 WS-TEMP         PIC S9(5)V9(4).
+       01 WS-HUD-TEXT      PIC X(120).
 
        PROCEDURE DIVISION.
        MAIN-PROGRAM.
@@ -176,8 +177,7 @@
            MOVE 0 TO WS-GAME-OVER
            PERFORM GAME-LOOP UNTIL WS-GAME-OVER = 1
            CALL "SYSTEM" USING WS-STTY-SANE
-           DISPLAY WS-ANSI-CLEAR
-           DISPLAY "Thanks for playing DOOM COBOL!"
+           PERFORM SHOW-END-SCREEN
            STOP RUN.
 
        GAME-LOOP.
@@ -185,11 +185,16 @@
            PERFORM RENDER-FRAME
            PERFORM RENDER-ENEMIES
            PERFORM RENDER-CROSSHAIR
+           PERFORM RENDER-HUD
            PERFORM DRAW-FRAME
            PERFORM READ-INPUT
            PERFORM PROCESS-INPUT
-           PERFORM MOVE-ENEMIES
-           PERFORM CHECK-ENEMY-ATTACKS.
+           IF WS-GAME-OVER = 0
+               PERFORM MOVE-ENEMIES
+               PERFORM CHECK-ENEMY-ATTACKS
+               PERFORM CHECK-WIN-CONDITION
+               PERFORM CHECK-DEATH
+           END-IF.
 
        READ-INPUT.
            CALL "getchar" RETURNING WS-KEY-CODE
@@ -560,6 +565,32 @@
            MOVE "+" TO WS-FRAME-CELL(20, 60)
            MOVE 7  TO WS-COLOR-CELL(20, 60).
 
+       RENDER-HUD.
+      *> Clear HUD row
+           MOVE SPACES TO WS-FRAME-ROW(WS-SCREEN-H)
+      *> Build HUD string
+           MOVE SPACES TO WS-HUD-TEXT
+           STRING
+               "HP:" DELIMITED BY SIZE
+               WS-HEALTH DELIMITED BY SIZE
+               " | AMMO:" DELIMITED BY SIZE
+               WS-AMMO DELIMITED BY SIZE
+               " | KILLS:" DELIMITED BY SIZE
+               WS-KILLS DELIMITED BY SIZE
+               "/" DELIMITED BY SIZE
+               WS-TOTAL-ENEMIES DELIMITED BY SIZE
+               " | DOOM COBOL" DELIMITED BY SIZE
+               INTO WS-HUD-TEXT
+           END-STRING
+      *> Copy to frame buffer
+           MOVE WS-HUD-TEXT TO WS-FRAME-ROW(WS-SCREEN-H)
+      *> Set HUD color (green)
+           PERFORM VARYING WS-CUR-COL FROM 1 BY 1
+               UNTIL WS-CUR-COL > WS-SCREEN-W
+               MOVE 6 TO
+                   WS-COLOR-CELL(WS-SCREEN-H, WS-CUR-COL)
+           END-PERFORM.
+
        DRAW-FRAME.
            DISPLAY WS-ANSI-HOME WITH NO ADVANCING
            PERFORM VARYING WS-ROW FROM 1 BY 1
@@ -750,6 +781,49 @@
                    END-IF
                END-IF
            END-PERFORM.
+
+       CHECK-WIN-CONDITION.
+           COMPUTE WS-CHK-X =
+               FUNCTION INTEGER-PART(WS-PX) + 1
+           COMPUTE WS-CHK-Y =
+               FUNCTION INTEGER-PART(WS-PY) + 1
+           IF WS-CHK-X >= 1 AND WS-CHK-X <= 16
+               AND WS-CHK-Y >= 1 AND WS-CHK-Y <= 16
+               IF WS-MAP-CELL(WS-CHK-Y, WS-CHK-X) = 9
+                   MOVE 1 TO WS-GAME-WON
+                   MOVE 1 TO WS-GAME-OVER
+               END-IF
+           END-IF.
+
+       CHECK-DEATH.
+           IF WS-HEALTH <= 0
+               MOVE 1 TO WS-GAME-OVER
+           END-IF.
+
+       SHOW-END-SCREEN.
+           DISPLAY WS-ANSI-CLEAR
+           IF WS-GAME-WON = 1
+               DISPLAY WS-ANSI-BGREEN
+               DISPLAY " "
+               DISPLAY "  =========================="
+               DISPLAY "  = LEVEL COMPLETE!        ="
+               DISPLAY "  = YOU SURVIVED!          ="
+               DISPLAY "  =========================="
+           ELSE
+               DISPLAY WS-ANSI-RED
+               DISPLAY " "
+               DISPLAY "  =========================="
+               DISPLAY "  = YOU DIED!              ="
+               DISPLAY "  =========================="
+           END-IF
+           DISPLAY WS-ANSI-RESET
+           DISPLAY " "
+           DISPLAY "  Kills: " WS-KILLS "/" WS-TOTAL-ENEMIES
+           DISPLAY "  Health: " WS-HEALTH
+           DISPLAY "  Ammo remaining: " WS-AMMO
+           DISPLAY " "
+           DISPLAY "  Press any key to exit..."
+           CALL "getchar" RETURNING WS-KEY-CODE.
 
        SHOOT.
            IF WS-AMMO <= 0
