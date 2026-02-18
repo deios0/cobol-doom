@@ -181,13 +181,14 @@
                    AND WS-FC-GRID-Y >= 1
                    AND WS-FC-GRID-Y <= WS-MAP-SIZE
                    COMPUTE WS-FC-LIGHT =
+                       (255 -
                        MC-LIGHT(WS-FC-GRID-Y,
-                       WS-FC-GRID-X)
+                       WS-FC-GRID-X))
                        / 8
-                       + WS-FC-ROW-DIST * 2
+                       + WS-FC-ROW-DIST / 2
                ELSE
                    COMPUTE WS-FC-LIGHT =
-                       WS-FC-ROW-DIST * 2
+                       16 + WS-FC-ROW-DIST / 2
                END-IF
                IF WS-FC-LIGHT > 31
                    MOVE 31 TO WS-FC-LIGHT
@@ -291,13 +292,14 @@
                    AND WS-FC-GRID-Y >= 1
                    AND WS-FC-GRID-Y <= WS-MAP-SIZE
                    COMPUTE WS-FC-LIGHT =
+                       (255 -
                        MC-LIGHT(WS-FC-GRID-Y,
-                       WS-FC-GRID-X)
+                       WS-FC-GRID-X))
                        / 8
-                       + WS-FC-ROW-DIST * 2
+                       + WS-FC-ROW-DIST / 2
                ELSE
                    COMPUTE WS-FC-LIGHT =
-                       WS-FC-ROW-DIST * 2
+                       16 + WS-FC-ROW-DIST / 2
                END-IF
                IF WS-FC-LIGHT > 31
                    MOVE 31 TO WS-FC-LIGHT

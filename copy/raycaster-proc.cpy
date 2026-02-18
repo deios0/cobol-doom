@@ -249,12 +249,12 @@
                AND WS-MAP-X >= 1
                AND WS-MAP-X <= WS-MAP-SIZE
                COMPUTE WS-LIGHT-LEVEL =
-                   MC-LIGHT(WS-MAP-Y, WS-MAP-X)
+                   (255 - MC-LIGHT(WS-MAP-Y, WS-MAP-X))
                    / 8
-                   + WS-PERP-DIST * 2
+                   + WS-PERP-DIST / 2
            ELSE
                COMPUTE WS-LIGHT-LEVEL =
-                   WS-PERP-DIST * 2
+                   16 + WS-PERP-DIST / 2
            END-IF
            IF WS-LIGHT-LEVEL < 0
                MOVE 0 TO WS-LIGHT-LEVEL

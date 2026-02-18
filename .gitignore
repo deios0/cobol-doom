@@ -1,5 +1,6 @@
-# Compiled COBOL binaries
+# Compiled binaries
 doom
+doom2
 *.o
 *.so
 *.dll
@@ -7,6 +8,16 @@ doom
 # GnuCOBOL intermediate files
 *.c.l[0-9]*
 *.i
+
+# WAD files (download separately, see README)
+*.wad
+
+# Screenshots and helper scripts
+*.png
+take_*.sh
+
+# Debate logs
+debate-log*.txt
 
 # Editor files
 *~
