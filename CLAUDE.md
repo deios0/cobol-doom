@@ -1,4 +1,4 @@
-# Cobol-Test
+# cobol-doom
 
 ## Workspace Rules
 > Part of CCode workspace. Read and follow:
