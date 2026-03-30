@@ -1,3 +1,15 @@
+---
+category: private
+description: Doom 2 MAP01 renderer written in GnuCOBOL with SDL2 pixel display (test
+  repo)
+name: Cobol-Test
+repo: deios0/cobol-doom
+updated_at: '2026-03-30'
+zone: personal
+---
+
+
+
 # cobol-doom
 
 ## Workspace Rules
@@ -8,8 +20,6 @@
 > A Doom 2 MAP01 renderer written in **GnuCOBOL** with SDL2 pixel display.
 
 ## Tech Stack
-
-
 
 ## Development Commands
 
@@ -34,10 +44,3 @@ make clean
 
 ## Brain Lessons
 <!-- brain:managed — do not edit manually, Brain Service updates this section -->
-
-- [2026-03-20] Dedup test lesson unique title xyz
-- [2026-03-20] Always run tests before commit
-- [2026-03-20] Testing MCP push
-- [2026-03-20] Severity: minor
-- [2026-03-20] Query test lesson unique xyz
-- [2026-03-20] Approve test lesson unique abc
